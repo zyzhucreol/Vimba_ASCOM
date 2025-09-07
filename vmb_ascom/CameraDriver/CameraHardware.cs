@@ -34,8 +34,8 @@ namespace ASCOM.AVTVimbaX.Camera
         internal const string traceStateProfileName = "Trace Level";
         internal const string traceStateDefault = "true";
 
-        private static string DriverProgId = ""; // ASCOM DeviceID (COM ProgID) for this driver, the value is set by the driver's class initialiser.
-        private static string DriverDescription = ""; // The value is set by the driver's class initialiser.
+        private static string DriverProgId = "ASCOM.AVTVimbaX.Camera"; // ASCOM DeviceID (COM ProgID) for this driver, the value is set by the driver's class initialiser.
+        private static string DriverDescription = "AVT Manta G-507 Vimba X driver"; // The value is set by the driver's class initialiser.
         internal static string comPort; // COM port name (if required)
         private static bool connectedState; // Local server's connected state
         private static bool runOnce = false; // Flag to enable "one-off" activities only to run once.
@@ -367,9 +367,9 @@ namespace ASCOM.AVTVimbaX.Camera
 
         #region ICamera Implementation
 
-        private const int ccdWidth = 1394; // Constants to define the CCD pixel dimensions
-        private const int ccdHeight = 1040;
-        private const double pixelSize = 6.45; // Constant for the pixel physical dimension
+        private const int ccdWidth = 2464; // Constants to define the CCD pixel dimensions
+        private const int ccdHeight = 2056;
+        private const double pixelSize = 3.45; // Constant for the pixel physical dimension
 
         static private int cameraNumX = ccdWidth; // Initialise variables to hold values required for functionality
         static private int cameraNumY = ccdHeight;
@@ -398,8 +398,8 @@ namespace ASCOM.AVTVimbaX.Camera
         {
             get
             {
-                LogMessage("BayerOffsetX Get", "Not implemented");
-                throw new PropertyNotImplementedException("BayerOffsetX", false);
+                LogMessage("BayerOffsetX Get", "0");
+                return 0;
             }
         }
 
@@ -411,8 +411,8 @@ namespace ASCOM.AVTVimbaX.Camera
         {
             get
             {
-                LogMessage("BayerOffsetY Get", "Not implemented");
-                throw new PropertyNotImplementedException("BayerOffsetX", true);
+                LogMessage("BayerOffsetY Get", "0");
+                return 0;
             }
         }
 
@@ -657,8 +657,8 @@ namespace ASCOM.AVTVimbaX.Camera
         {
             get
             {
-                LogMessage("ExposureMax Get", "Not implemented");
-                throw new PropertyNotImplementedException("ExposureMax", false);
+                LogMessage("ExposureMax Get", "8.58993e+07us");
+                return 85.899345;
             }
         }
 
@@ -670,8 +670,8 @@ namespace ASCOM.AVTVimbaX.Camera
         {
             get
             {
-                LogMessage("ExposureMin Get", "Not implemented");
-                throw new PropertyNotImplementedException("ExposureMin", false);
+                LogMessage("ExposureMin Get", "30us");
+                return 0.00003;
             }
         }
 
@@ -683,8 +683,8 @@ namespace ASCOM.AVTVimbaX.Camera
         {
             get
             {
-                LogMessage("ExposureResolution Get", "Not implemented");
-                throw new PropertyNotImplementedException("ExposureResolution", false);
+                LogMessage("ExposureResolution Get", "1us");
+                return 0.000001;
             }
         }
 
@@ -731,8 +731,8 @@ namespace ASCOM.AVTVimbaX.Camera
         {
             get
             {
-                LogMessage("Gain Get", "Not implemented");
-                throw new PropertyNotImplementedException("Gain", false);
+                LogMessage("Gain Get", "0dB");
+                return 0;
             }
             set
             {
@@ -790,8 +790,8 @@ namespace ASCOM.AVTVimbaX.Camera
         {
             get
             {
-                LogMessage("HasShutter Get", false.ToString());
-                return false;
+                LogMessage("HasShutter Get", true.ToString());
+                return true;
             }
         }
 
@@ -1159,8 +1159,8 @@ namespace ASCOM.AVTVimbaX.Camera
         {
             get
             {
-                LogMessage("SensorType Get", "Not implemented");
-                throw new PropertyNotImplementedException("SensorType", false);
+                LogMessage("SensorType Get", "RGGB");
+                return SensorType.RGGB;
             }
         }
 
