@@ -1,7 +1,8 @@
-﻿// Example from Vimba X dotnet API readme
+﻿// vmb_test image acuqisition in an infinite loop
 // See https://aka.ms/new-console-template for more information
 // Before running this example, make sure all camera attributes are set correctly in Vimba X Viewer.
 
+using System.Collections.Concurrent;
 using System.Runtime.InteropServices;
 using VmbNET;
 class Program
@@ -12,22 +13,9 @@ class Program
 
         var cam = vmb.GetCameras()[0]; // Get the first available camera
 
-        using var openCam = cam.Open(); // Open the camera 
+        using var openCam = cam.Open(); // Open the camera
 
-        // Show a list of camera features
-        foreach (var feature in openCam.Features)
-        {
-            try
-            {
-                Console.WriteLine($"Feature Name: {feature.Name}, Value: {feature.Value}");
-            }
-            catch
-            {
-                // Some features may not support reading the value directly
-                Console.WriteLine($"Feature Name: {feature.Name}, Value: <unavailable>");
-            }
-        }
-
+        int N_frames = 10;
         int exposure_time = 5000;
         int gain = 0;
         // Set camera attributes
@@ -59,9 +47,11 @@ class Program
         }; // IDisposable: Frame is automatically requeued
 
         // Convenience function to start acquisition
-        using var acquisition = openCam.StartFrameAcquisition();
-
-        Thread.Sleep(100);
+        for (int i = 0; i < N_frames; i++)
+        {
+            using var acquisition = openCam.StartFrameAcquisition();
+            Thread.Sleep(100); // gap between acquisitions to allow for data processing and printing
+        }
 
     } // IDisposable: Stops acquisition, closes camera, shuts down Vimba X
 }
