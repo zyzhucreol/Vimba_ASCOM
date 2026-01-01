@@ -1,0 +1,6 @@
+__pycache__/
+*.csv
+*.log
+/src/deadsea_optics.dist-info
+/build
+/dist

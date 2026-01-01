@@ -15,6 +15,7 @@ using ASCOM.Utilities;
 using System;
 using System.Collections;
 using System.Windows.Forms;
+using VmbNET;
 
 namespace ASCOM.AVTVimbaX.Camera
 {
@@ -42,6 +43,15 @@ namespace ASCOM.AVTVimbaX.Camera
         internal static Util utilities; // ASCOM Utilities object for use as required
         internal static AstroUtils astroUtilities; // ASCOM AstroUtilities object for use as required
         internal static TraceLogger tl; // Local server's trace logger object for diagnostic log with information that you specify
+
+        // Replace the following invalid member declarations:
+        // public vmb = IVmbSystem.Startup(); // API startup (loads transport layers)
+        // public cam = vmb.GetCameras()[0]; // Get the first available camera
+        
+        // With valid static field declarations and initialization in a static constructor or initialization method:
+        private static IVmbSystem vmb = IVmbSystem.Startup(); // API startup (loads transport layers);
+        private static ICamera cam = vmb.GetCameras()[0]; // Get the first available camera;
+        private static IOpenCamera openCam = cam.Open(); // Open the camera
 
         /// <summary>
         /// Initializes a new instance of the device Hardware class.
