@@ -11,6 +11,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "vmb_test_loop", "vmb_test_l
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "vmb_test_stream", "vmb_test_stream\vmb_test_stream.csproj", "{F59D8457-7AB8-4D5C-B612-DF4C9043927B}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AsynchronousGrabOpenCV", "vmb_test_stream_opencv\AsynchronousGrabOpenCV.csproj", "{6A3FBC1E-AD3E-3536-7B57-1469D636F1BD}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -33,6 +35,10 @@ Global
 		{F59D8457-7AB8-4D5C-B612-DF4C9043927B}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F59D8457-7AB8-4D5C-B612-DF4C9043927B}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F59D8457-7AB8-4D5C-B612-DF4C9043927B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6A3FBC1E-AD3E-3536-7B57-1469D636F1BD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6A3FBC1E-AD3E-3536-7B57-1469D636F1BD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6A3FBC1E-AD3E-3536-7B57-1469D636F1BD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6A3FBC1E-AD3E-3536-7B57-1469D636F1BD}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

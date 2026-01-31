@@ -49,9 +49,9 @@ namespace ASCOM.AVTVimbaX.Camera
         // public cam = vmb.GetCameras()[0]; // Get the first available camera
         
         // With valid static field declarations and initialization in a static constructor or initialization method:
-        private static IVmbSystem vmb = IVmbSystem.Startup(); // API startup (loads transport layers);
-        private static ICamera cam = vmb.GetCameras()[0]; // Get the first available camera;
-        private static IOpenCamera openCam = cam.Open(); // Open the camera
+        public static IVmbSystem vmb = IVmbSystem.Startup(); // API startup (loads transport layers);
+        public static ICamera cam = vmb.GetCameras()[0]; // Get the first available camera;
+        public static IOpenCamera openCam = cam.Open(); // Open the camera
 
         /// <summary>
         /// Initializes a new instance of the device Hardware class.

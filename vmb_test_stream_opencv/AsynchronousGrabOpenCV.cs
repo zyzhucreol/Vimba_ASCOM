@@ -3,8 +3,13 @@
   Subject to the BSD 3-Clause License.
 =============================================================================*/
 
+using Logging;
+using OpenCvSharp;
+using System;
 using System.Collections.Concurrent;
+using System.Linq;
 using System.Runtime.InteropServices;
+using System.Threading.Tasks;
 using VmbNET;
 
 namespace AsynchronousGrabOpenCV
@@ -12,7 +17,6 @@ namespace AsynchronousGrabOpenCV
     /// <summary>
     /// Example program using openCV to display images asynchronously grabbed with VmbNET.
     /// </summary>
-    /// 
     class AsynchronousGrabOpenCV
     {
         // code returned by OpenCV's WaitKey() when <enter> is pressed
@@ -24,9 +28,9 @@ namespace AsynchronousGrabOpenCV
             int exposure_time = 5000;
             int gain = 0;
 
-            Console.WriteLine("///////////////////////////////////////////////////////");
-            Console.WriteLine("/// VmbNET Asynchronous Grab without OpenCV Example ///");
-            Console.WriteLine("///////////////////////////////////////////////////////\n");
+            Console.WriteLine("////////////////////////////////////////////////////");
+            Console.WriteLine("/// VmbNET Asynchronous Grab with OpenCV Example ///");
+            Console.WriteLine("////////////////////////////////////////////////////\n");
 
             string cameraId = "";
             var allocationMode = ICapturingModule.AllocationModeValue.AnnounceFrame;
@@ -61,9 +65,39 @@ namespace AsynchronousGrabOpenCV
                 return;
             }
 
-            using var vmb = IVmbSystem.Startup(); // API startup (loads transport layers)
+            IVmbSystem.Logger = LoggerCreator.CreateLogger();
 
-            var camera = vmb.GetCameras()[0]; // Get the first available camera
+            // startup Vimba X
+            using var vmbSystem = IVmbSystem.Startup();
+
+            ICamera camera;
+            if (cameraId.Length > 0)
+            {
+                try
+                {
+                    // get camera with user-supplied ID
+                    camera = vmbSystem.GetCameraByID(cameraId);
+                }
+                catch (VmbNETException e)
+                {
+                    Console.WriteLine($"Received VmbNET error: \"{e.Message}\" when trying to get camera.");
+                    return;
+                }
+            }
+            else
+            {
+                // get first detected camera
+                var cameras = vmbSystem.GetCameras();
+                if (cameras.Count > 0)
+                {
+                    camera = cameras[0];
+                }
+                else
+                {
+                    Console.WriteLine("No cameras found.");
+                    return;
+                }
+            }
 
             // open the camera
             using var openCamera = camera.Open();
@@ -72,6 +106,16 @@ namespace AsynchronousGrabOpenCV
             // Set camera attributes
             features.ExposureTimeAbs = exposure_time; // Set the exposure time value in us
             features.Gain = gain; // Set the gain value in dB
+
+            // for GigE cameras only, adjust the packet size if possible
+            if (openCamera.TransportLayer.Type == TransportLayerType.GEV && openCamera.Stream.Features.GVSPAdjustPacketSize.Exists)
+            {
+                Console.WriteLine($"trying to adjust the package size");
+                await (Task)openCamera.Stream.Features.GVSPAdjustPacketSize(TimeSpan.FromSeconds(1));
+            }
+
+            features.PixelFormat = features.PixelFormat.EnumEntriesByName.ContainsKey("RGB8") ? "RGB8" : "Mono8";
+            MatType matType = features.PixelFormat == "RGB8" ? MatType.CV_8UC3 : MatType.CV_8UC1;
 
             // prepare stream 0 for capturing
             using var streamCapture = openCamera.PrepareCapture(allocationMode, 5);
@@ -92,12 +136,29 @@ namespace AsynchronousGrabOpenCV
             // start the acquisition in the camera
             features.AcquisitionStart();
 
+            // set window name
+            var windowName = $"Stream from {camera.Serial}. Press <enter> to stop streaming.";
+
+            int frameWidth = 1024;
+            int? frameHeight = null;
+
             // pop each event argument from the queue and process the frame, until the user presses <enter>
             foreach (var frame in frameQueue.GetConsumingEnumerable())
             {
                 // display frame if completed
                 if (frame.FrameStatus == IFrame.FrameStatusValue.Completed)
                 {
+                    // convert the received frame to an OpenCV matrix and resize it
+                    using var imageMat = Mat.FromPixelData((int)frame.Height, (int)frame.Width, matType, frame.ImageData);
+
+                    frameHeight ??= (int)((double)(1024 * frame.Height) / frame.Width);
+                    Cv2.Resize(imageMat, imageMat, new Size(frameWidth, frameHeight.Value));
+
+                    Cv2.CvtColor(imageMat, imageMat, ColorConversionCodes.BGR2RGB);
+
+                    // display the image in the window
+                    Cv2.ImShow(windowName, imageMat);
+
                     // Access image data
                     uint width = frame.Width;
                     uint height = frame.Height;
@@ -121,6 +182,20 @@ namespace AsynchronousGrabOpenCV
 
                 // manual dispose since frame was obtained on another thread
                 frame.Dispose();
+
+                // get pressed key, if any
+                var key = Cv2.WaitKey(1);
+                if (key == EnterKeyCode)
+                {
+                    // user pressed <enter>, close the window
+                    Cv2.DestroyWindow(windowName);
+
+                    // remove event handler lambda function
+                    openCamera.RemoveAllFrameEventHandlers();
+
+                    // exit this loop
+                    break;
+                }
             }
 
             // stop the acquisition, terminate the capturing, close the camera and shutdown Vimba X

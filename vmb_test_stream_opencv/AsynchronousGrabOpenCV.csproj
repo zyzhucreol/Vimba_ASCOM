@@ -1,0 +1,59 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+
+        <!-- Set target frameworks to .NET 8.0 only.
+             Change "net8.0" or add to it if a different framework is (also) desired,
+             e.g. to create assemblies for .NET 8.0 and .NET Framework 4.6.2,
+             use "net8.0;net462". -->
+        <TargetFrameworks>net8.0</TargetFrameworks>
+
+        <LangVersion>9.0</LangVersion>
+        <Nullable>enable</Nullable>
+        <Platforms>AnyCPU</Platforms>
+        <NoWarn>MSB3246</NoWarn>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <Content Include="$(OutDir)\VmbC.xml" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.2" />
+        <PackageReference Include="OpenCV" Version="2.4.11" />
+        <PackageReference Include="Serilog" Version="4.3.0" />
+        <PackageReference Include="Serilog.Enrichers.WithCaller" Version="1.3.0" />
+        <PackageReference Include="Serilog.Extensions.Logging" Version="10.0.0" />
+        <PackageReference Include="Serilog.Sinks.Console" Version="6.1.1" />
+        <PackageReference Include="Serilog.Sinks.File" Version="7.0.0" />
+        <PackageReference Include="OpenCvSharp4" Version="4.11.0.20250507" />
+        <PackageReference Include="VmbNET.win-x64" Version="1.3.1" />
+    </ItemGroup>
+
+    <Import Project="../user.build.props" Condition="$(NoUserBuildProps) == ''" />
+
+    <Choose>
+        <When Condition="'$(Runtime)' == 'win-x64'">
+            <ItemGroup>
+                <PackageReference Include="VmbNET.win-x64" Version="1.*-*" />
+            </ItemGroup>
+        </When>
+        <When Condition="'$(Runtime)' == 'linux-x64'">
+            <ItemGroup>
+                <PackageReference Include="VmbNET.linux-x64" Version="1.*-*" />
+            </ItemGroup>
+        </When>
+        <When Condition="'$(Runtime)' == 'linux-arm64'">
+            <ItemGroup>
+                <PackageReference Include="VmbNET.linux-arm64" Version="1.*-*" />
+            </ItemGroup>
+        </When>
+    </Choose>
+
+    <ItemGroup Condition="$(Runtime) != ''">
+        <PackageReference Include="OpenCvSharp4.runtime.win" Version="4.10.0.20240616 " Condition="$(Runtime) == 'win-x64'" />
+        <PackageReference Include="OpenCvSharp4.runtime.linux-x64" Version="4.10.0.20240717" Condition="$(Runtime) == 'linux-x64'" />
+    </ItemGroup>
+
+</Project>

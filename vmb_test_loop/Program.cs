@@ -2,7 +2,6 @@
 // See https://aka.ms/new-console-template for more information
 // Before running this example, make sure all camera attributes are set correctly in Vimba X Viewer.
 
-using System.Collections.Concurrent;
 using System.Runtime.InteropServices;
 using VmbNET;
 class Program
