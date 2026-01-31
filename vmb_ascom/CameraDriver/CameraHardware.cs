@@ -1,11 +1,10 @@
-﻿// TODO fill in this information for your driver, then remove this line!
-//
+﻿//
 // ASCOM Camera hardware class for AVTVimbaX
 //
-// Description:	 <To be completed by driver developer>
+// Description:	 Based on Vimba X .NET API and ASCOM Camera Driver template for Allied Vision Cameras
 //
-// Implements:	ASCOM Camera interface version: <To be completed by driver developer>
-// Author:		(XXX) Your N. Here <your@email.here>
+// Implements:	ASCOM Camera interface version: v0.1
+// Author:		Zheyuan Zhu <zheyuan.zhu@gmail.com>
 //
 
 using ASCOM;
@@ -14,6 +13,8 @@ using ASCOM.DeviceInterface;
 using ASCOM.Utilities;
 using System;
 using System.Collections;
+using System.Collections.Concurrent;
+using System.Runtime.InteropServices;
 using System.Windows.Forms;
 using VmbNET;
 
@@ -43,15 +44,6 @@ namespace ASCOM.AVTVimbaX.Camera
         internal static Util utilities; // ASCOM Utilities object for use as required
         internal static AstroUtils astroUtilities; // ASCOM AstroUtilities object for use as required
         internal static TraceLogger tl; // Local server's trace logger object for diagnostic log with information that you specify
-
-        // Replace the following invalid member declarations:
-        // public vmb = IVmbSystem.Startup(); // API startup (loads transport layers)
-        // public cam = vmb.GetCameras()[0]; // Get the first available camera
-        
-        // With valid static field declarations and initialization in a static constructor or initialization method:
-        public static IVmbSystem vmb = IVmbSystem.Startup(); // API startup (loads transport layers);
-        public static ICamera cam = vmb.GetCameras()[0]; // Get the first available camera;
-        public static IOpenCamera openCam = cam.Open(); // Open the camera
 
         /// <summary>
         /// Initializes a new instance of the device Hardware class.
@@ -84,10 +76,28 @@ namespace ASCOM.AVTVimbaX.Camera
         /// Place device initialisation code here
         /// </summary>
         /// <remarks>Called every time a new instance of the driver is created.</remarks>
+        // Vimba X API objects
+        public static IVmbSystem vmb = IVmbSystem.Startup(); // API startup (loads transport layers);
+        public static ICamera cam = vmb.GetCameras()[0]; // Get the first available camera;
+        public static IOpenCamera openCam = cam.Open(); // Open the camera
+        public static byte[] imageBufferData = new byte[ccdHeight * ccdWidth * sizeof(ushort)];
+        public static ushort[] image_data = new ushort[ccdHeight * ccdWidth];
         internal static void InitialiseHardware()
         {
             // This method will be called every time a new ASCOM client loads your driver
             LogMessage("InitialiseHardware", $"Start.");
+
+            // Code to prepare for frame acquisition, copied from vmb_test_stream example
+            //var frameQueue = new BlockingCollection<IFrame>(5);
+            // event handler for received frames
+            /*openCam.FrameReceived += (_, frameReceivedEventArgs) =>
+            {
+                // get the frame without the "using" keyword because it will be disposed on the main thread
+                IFrame frame = frameReceivedEventArgs.Frame;
+
+                // add the event arguments to the queue
+                frameQueue.Add(frame);
+            };*/
 
             // Make sure that "one off" activities are only undertaken once
             if (runOnce == false)
@@ -610,8 +620,8 @@ namespace ASCOM.AVTVimbaX.Camera
         {
             get
             {
-                LogMessage("CanStopExposure Get", false.ToString());
-                return false;
+                LogMessage("CanStopExposure Get", true.ToString());
+                return true;
             }
         }
 
@@ -800,8 +810,8 @@ namespace ASCOM.AVTVimbaX.Camera
         {
             get
             {
-                LogMessage("HasShutter Get", true.ToString());
-                return true;
+                LogMessage("HasShutter Get", false.ToString());
+                return false;
             }
         }
 
@@ -833,6 +843,7 @@ namespace ASCOM.AVTVimbaX.Camera
                 }
 
                 cameraImageArray = new int[cameraNumX, cameraNumY];
+                Buffer.BlockCopy(imageBufferData, 0, cameraImageArray, 0, imageBufferData.Length);
                 return cameraImageArray;
             }
         }
@@ -1016,7 +1027,7 @@ namespace ASCOM.AVTVimbaX.Camera
         {
             get
             {
-                LogMessage("Offset Get", "Not implemented");
+                LogMessage("Offset Get", "0");
                 throw new PropertyNotImplementedException("Offset", false);
             }
             set
@@ -1156,8 +1167,8 @@ namespace ASCOM.AVTVimbaX.Camera
         {
             get
             {
-                LogMessage("SensorName Get", "Not implemented");
-                throw new PropertyNotImplementedException("SensorName", false);
+                LogMessage("SensorName Get", "IMX264");
+                return "IMX264";
             }
         }
 
@@ -1207,8 +1218,18 @@ namespace ASCOM.AVTVimbaX.Camera
 
             cameraLastExposureDuration = Duration;
             exposureStart = DateTime.Now;
-            System.Threading.Thread.Sleep((int)Duration * 1000);  // Sleep for the duration to simulate exposure 
             LogMessage("StartExposure", Duration.ToString() + " " + Light.ToString());
+
+            //System.Threading.Thread.Sleep((int)Duration * 1000);  // Sleep for the duration to simulate exposure
+            var allocationMode = ICapturingModule.AllocationModeValue.AllocAndAnnounceFrame;
+            var streamCapture = openCam.PrepareCapture(allocationMode, 5);
+            var features = openCam.Features;
+            features.ExposureTimeAbs = Duration * 1000000;
+            features.AcquisitionStart();
+            var frame = streamCapture.WaitForFrame(TimeSpan.FromMilliseconds(1000));
+            IntPtr imagePtr = (IntPtr)frame.ImageData;
+            Marshal.Copy(imagePtr, imageBufferData, 0, ccdHeight*ccdWidth);
+            
             cameraImageReady = true;
         }
 
@@ -1251,8 +1272,8 @@ namespace ASCOM.AVTVimbaX.Camera
         /// </summary>
         static internal void StopExposure()
         {
-            LogMessage("StopExposure", "Not implemented");
-            throw new MethodNotImplementedException("StopExposure");
+            var features = openCam.Features;
+            features.AcquisitionStop();
         }
 
         /// <summary>
