@@ -35,7 +35,7 @@ namespace ASCOM.AVTVimbaX.Camera
     [ComVisible(true)]
     [Guid("74322dff-2847-452b-9831-5e8efeacfef4")]
     [ProgId("ASCOM.AVTVimbaX.Camera")]
-    [ServedClassName("ASCOM Camera Driver for AVTVimbaX")] // Driver description that appears in the Chooser, customise as required
+    [ServedClassName("AVTVimbaX ASCOM")] // Driver description that appears in the Chooser, customise as required
     [ClassInterface(ClassInterfaceType.None)]
     public class Camera : ReferenceCountedObjectBase, ICameraV3, IDisposable
     {
