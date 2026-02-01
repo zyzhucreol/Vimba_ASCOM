@@ -10,7 +10,7 @@ class Program
     {
         using var vmb = IVmbSystem.Startup(); // API startup (loads transport layers)
 
-        var cam = vmb.GetCameras()[0]; // Get the first available camera
+        var cam = vmb.GetCameraByID("DEV_000F314DA17F"); // Get the first available camera
 
         using var openCam = cam.Open(); // Open the camera
 

@@ -52,7 +52,7 @@
     </Choose>
 
     <ItemGroup Condition="$(Runtime) != ''">
-        <PackageReference Include="OpenCvSharp4.runtime.win" Version="4.10.0.20240616 " Condition="$(Runtime) == 'win-x64'" />
+        <PackageReference Include="OpenCvSharp4.runtime.win" Version="4.11.0.20250507" Condition="$(Runtime) == 'win-x64'" />
         <PackageReference Include="OpenCvSharp4.runtime.linux-x64" Version="4.10.0.20240717" Condition="$(Runtime) == 'linux-x64'" />
     </ItemGroup>
 
