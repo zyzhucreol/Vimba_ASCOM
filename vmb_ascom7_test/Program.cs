@@ -4,7 +4,6 @@
 //#define UseChooser
 
 using System;
-//using VmbNET;
 
 namespace ASCOM
 {
@@ -28,8 +27,6 @@ namespace ASCOM
 #endif
 
             // Connect to the device
-            //IVmbSystem vmbSystem = IVmbSystem.Startup();
-            //ICamera cam = vmbSystem.GetCameraByID("DEV_000F314DA17F");
             device.Connected = true;
 
             // Now exercise some calls that are common to all drivers.
@@ -41,7 +38,7 @@ namespace ASCOM
 
             //
             // TODO add more code to test your driver.
-            device.Connect();
+            //
 
             // Disconnect from the device
             device.Connected = false;

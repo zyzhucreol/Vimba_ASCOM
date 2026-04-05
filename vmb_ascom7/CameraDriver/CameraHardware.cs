@@ -110,8 +110,8 @@ namespace ASCOM.ZZVimbaX.Camera
 
                 LogMessage("InitialiseHardware", "Completed basic initialisation");
 
-                // Add your own "one off" device initialisation here e.g. validating existence of hardware and setting up communications
-                // If you are using a serial COM port you will find the COM port name selected by the user through the setup dialogue in the comPort variable.
+                vmb = IVmbSystem.Startup(); // API startup (loads transport layers)
+                LogMessage("InitialiseHardware", "Vimba X API started.");
 
                 LogMessage("InitialiseHardware", $"One-off initialisation complete.");
                 runOnce = true; // Set the flag to ensure that this code is not run again
@@ -274,6 +274,13 @@ namespace ASCOM.ZZVimbaX.Camera
                 astroUtilities = null;
             }
             catch { }
+
+            try
+            {
+                if (openCam != null) { openCam.Dispose(); openCam = null; }
+                if (vmb != null) { vmb.Dispose(); vmb = null; }
+            }
+            catch { }
         }
 
         /// <summary>
@@ -297,10 +304,12 @@ namespace ASCOM.ZZVimbaX.Camera
                     // Check whether this is the first connection to the hardware
                     if (uniqueIds.Count == 0) // This is the first connection to the hardware so initiate the hardware connection
                     {
-                        //
-                        // Add hardware connect logic here
-                        //
                         LogMessage("SetConnected", $"Connecting to hardware.");
+                        cam = vmb.GetCameraByID("DEV_000F314DA17F"); // Get the camera by ID
+                        openCam = cam.Open(); // Open the camera
+                        openCam.Features.ExposureTimeAbs = 5000; // Set default exposure time in microseconds
+                        openCam.Features.Gain = 0; // Set default gain in dB
+                        LogMessage("SetConnected", "Vimba X camera opened.");
                     }
                     else // Other device instances are connected so the hardware is already connected
                     {
@@ -330,9 +339,9 @@ namespace ASCOM.ZZVimbaX.Camera
                     // Check whether there are now any connected driver instances 
                     if (uniqueIds.Count == 0) // There are no connected driver instances so disconnect from the hardware
                     {
-                        //
-                        // Add hardware disconnect logic here
-                        //
+                        if (openCam != null) { openCam.Dispose(); openCam = null; }
+                        if (vmb != null) { vmb.Dispose(); vmb = null; }
+                        LogMessage("SetConnected", "Vimba X camera closed and API shut down.");
                     }
                     else // Other device instances are connected so do not disconnect the hardware
                     {
@@ -439,6 +448,7 @@ namespace ASCOM.ZZVimbaX.Camera
         static private object[,] cameraImageArrayVariant;
         static private IVmbSystem vmb = null;
         static private ICamera cam = null;
+        static private IOpenCamera openCam = null;
         //static byte[] imageBufferData = new byte[ccdHeight * ccdWidth * sizeof(ushort)];
 
         // Vimba X API objects
@@ -1272,7 +1282,6 @@ namespace ASCOM.ZZVimbaX.Camera
             cameraLastExposureDuration = Duration;
             exposureStart = DateTime.Now;
 
-            vmb = IVmbSystem.Startup(); // API startup (loads transport layers);
             //cam = vmb.GetCameraByID("DEV_000F314DA17F"); // Get the first available camera;
             //IOpenCamera openCam = cam.Open(); // Open the camera
             //var features = openCam.Features;
