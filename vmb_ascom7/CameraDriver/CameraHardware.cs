@@ -1201,17 +1201,19 @@ namespace ASCOM.ZZVimbaX.Camera
         /// <value></value>
         /// <returns>Short integer index into the <see cref="ReadoutModes">ReadoutModes</see> array of string readout mode names indicating
         /// the camera's current readout mode.</returns>
+        private static short cameraReadoutMode = 0;
         static internal short ReadoutMode
         {
             get
             {
-                LogMessage("ReadoutMode Get", "Not implemented");
-                throw new PropertyNotImplementedException("ReadoutMode", false);
+                LogMessage("ReadoutMode Get", cameraReadoutMode.ToString());
+                return cameraReadoutMode;
             }
             set
             {
-                LogMessage("ReadoutMode Set", "Not implemented");
-                throw new PropertyNotImplementedException("ReadoutMode", true);
+                if (value != 0) throw new InvalidValueException("ReadoutMode", value.ToString(), "0");
+                cameraReadoutMode = value;
+                LogMessage("ReadoutMode Set", value.ToString());
             }
         }
 
@@ -1223,8 +1225,9 @@ namespace ASCOM.ZZVimbaX.Camera
         {
             get
             {
-                LogMessage("ReadoutModes Get", "Not implemented");
-                throw new PropertyNotImplementedException("ReadoutModes", false);
+                ArrayList modes = new ArrayList() { "Standard" };
+                LogMessage("ReadoutModes Get", "Standard");
+                return modes;
             }
         }
 
