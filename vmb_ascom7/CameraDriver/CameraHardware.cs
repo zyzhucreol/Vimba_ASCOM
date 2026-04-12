@@ -538,8 +538,9 @@ namespace ASCOM.ZZVimbaX.Camera
         {
             get
             {
-                LogMessage("CCDTemperature Get", "Not implemented");
-                throw new PropertyNotImplementedException("CCDTemperature", false);
+                double temp = openCam.Features.DeviceTemperature;
+                LogMessage("CCDTemperature Get", temp.ToString());
+                return temp;
             }
         }
 
@@ -618,8 +619,8 @@ namespace ASCOM.ZZVimbaX.Camera
         {
             get
             {
-                LogMessage("CanFastReadout Get", true.ToString());
-                return true;
+                LogMessage("CanFastReadout Get", false.ToString());
+                return false;
             }
         }
 
@@ -678,8 +679,8 @@ namespace ASCOM.ZZVimbaX.Camera
         {
             get
             {
-                LogMessage("CanStopExposure Get", true.ToString());
-                return true;
+                LogMessage("CanStopExposure Get", false.ToString());
+                return false;
             }
         }
 
@@ -691,8 +692,8 @@ namespace ASCOM.ZZVimbaX.Camera
         {
             get
             {
-                LogMessage("CoolerOn Get", "Not implemented");
-                throw new PropertyNotImplementedException("CoolerOn", false);
+                LogMessage("CoolerOn Get", false.ToString());
+                return false;
             }
             set
             {
@@ -709,8 +710,8 @@ namespace ASCOM.ZZVimbaX.Camera
         {
             get
             {
-                LogMessage("CoolerPower Get", "Not implemented");
-                throw new PropertyNotImplementedException("CoolerPower", false);
+                LogMessage("CoolerPower Get", "0");
+                return 0;
             }
         }
 
@@ -809,13 +810,15 @@ namespace ASCOM.ZZVimbaX.Camera
         {
             get
             {
-                LogMessage("Gain Get", "Not implemented");
-                throw new PropertyNotImplementedException("Gain", false);
+                double current_gain_value = openCam.Features.Gain;
+                LogMessage("Gain Get", current_gain_value.ToString());
+                return (short)current_gain_value;
             }
             set
             {
-                LogMessage("Gain Set", "Not implemented");
-                throw new PropertyNotImplementedException("Gain", true);
+                if (value < GainMin || value > GainMax) throw new InvalidValueException("Gain", value.ToString(), $"{GainMin} to {GainMax}");
+                openCam.Features.Gain = value;
+                LogMessage("Gain Set", value.ToString());
             }
         }
 
@@ -827,8 +830,8 @@ namespace ASCOM.ZZVimbaX.Camera
         {
             get
             {
-                LogMessage("GainMax Get", "Not implemented");
-                throw new PropertyNotImplementedException("GainMax", false);
+                LogMessage("GainMax Get", "40");
+                return 40;
             }
         }
 
@@ -840,8 +843,8 @@ namespace ASCOM.ZZVimbaX.Camera
         {
             get
             {
-                LogMessage("GainMin Get", "Not implemented");
-                throw new PropertyNotImplementedException("GainMin", true);
+                LogMessage("GainMin Get", "0");
+                return 0;
             }
         }
 
@@ -854,7 +857,7 @@ namespace ASCOM.ZZVimbaX.Camera
             get
             {
                 LogMessage("Gains Get", "Not implemented");
-                throw new PropertyNotImplementedException("Gains", true);
+                throw new PropertyNotImplementedException("Gains", false);
             }
         }
 
@@ -881,8 +884,9 @@ namespace ASCOM.ZZVimbaX.Camera
         {
             get
             {
-                LogMessage("HeatSinkTemperature Get", "Not implemented");
-                throw new PropertyNotImplementedException("HeatSinkTemperature", false);
+                double temp = openCam.Features.DeviceTemperature;
+                LogMessage("HeatSinkTemperature Get", temp.ToString());
+                return temp;
             }
         }
 
