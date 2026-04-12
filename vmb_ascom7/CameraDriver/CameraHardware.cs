@@ -57,6 +57,11 @@ namespace ASCOM.ZZVimbaX.Camera
 
         private static List<Guid> uniqueIds = new List<Guid>(); // List of driver instance unique IDs
 
+        static private IVmbSystem vmb = null;
+        static private ICamera cam = null;
+        static private IOpenCamera openCam = null;
+        //static byte[] imageBufferData = new byte[ccdHeight * ccdWidth * sizeof(ushort)];
+
         /// <summary>
         /// Initializes a new instance of the device Hardware class.
         /// </summary>
@@ -307,7 +312,7 @@ namespace ASCOM.ZZVimbaX.Camera
                         LogMessage("SetConnected", $"Connecting to hardware.");
                         cam = vmb.GetCameraByID("DEV_000F314DA17F"); // Get the camera by ID
                         openCam = cam.Open(); // Open the camera
-                        openCam.Features.ExposureTimeAbs = 5000; // Set default exposure time in microseconds
+                        openCam.Features.ExposureTimeAbs = 500; // Set default exposure time in microseconds
                         openCam.Features.Gain = 0; // Set default gain in dB
                         LogMessage("SetConnected", "Vimba X camera opened.");
                     }
@@ -339,8 +344,8 @@ namespace ASCOM.ZZVimbaX.Camera
                     // Check whether there are now any connected driver instances 
                     if (uniqueIds.Count == 0) // There are no connected driver instances so disconnect from the hardware
                     {
+                        if (cam != null) { cam = null; }
                         if (openCam != null) { openCam.Dispose(); openCam = null; }
-                        if (vmb != null) { vmb.Dispose(); vmb = null; }
                         LogMessage("SetConnected", "Vimba X camera closed and API shut down.");
                     }
                     else // Other device instances are connected so do not disconnect the hardware
@@ -382,7 +387,7 @@ namespace ASCOM.ZZVimbaX.Camera
             {
                 Version version = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
                 // TODO customise this driver description if required
-                string driverInfo = $"Information about the driver itself. Version: {version.Major}.{version.Minor}";
+                string driverInfo = $"AVT Vimbax for ASCOM. Version: {version.Major}.{version.Minor}";
                 LogMessage("DriverInfo Get", driverInfo);
                 return driverInfo;
             }
@@ -423,7 +428,7 @@ namespace ASCOM.ZZVimbaX.Camera
             // TODO customise this device name as required
             get
             {
-                string name = "Short driver name - please customise";
+                string name = "AVT VimbaX for ASCOM";
                 LogMessage("Name Get", name);
                 return name;
             }
@@ -446,10 +451,6 @@ namespace ASCOM.ZZVimbaX.Camera
         static private bool cameraImageReady = false;
         static private int[,] cameraImageArray;
         static private object[,] cameraImageArrayVariant;
-        static private IVmbSystem vmb = null;
-        static private ICamera cam = null;
-        static private IOpenCamera openCam = null;
-        //static byte[] imageBufferData = new byte[ccdHeight * ccdWidth * sizeof(ushort)];
 
         // Vimba X API objects
         //static IVmbSystem vmb = IVmbSystem.Startup(); // API startup (loads transport layers);
@@ -1292,8 +1293,8 @@ namespace ASCOM.ZZVimbaX.Camera
             //Marshal.Copy((IntPtr)frame.ImageData, imageBufferData, 0, (int)ccdHeight * ccdWidth);
             //public static ushort[] image_data = new ushort[ccdHeight * ccdWidth];
             System.Threading.Thread.Sleep((int)Duration * 1000);  // Sleep for the duration to simulate exposure 
-            LogMessage("StartExposure", Duration.ToString() + " " + Light.ToString());
             cameraImageReady = true;
+            LogMessage("StartExposure", Duration.ToString() + " " + Light.ToString());
         }
 
         /// <summary>
