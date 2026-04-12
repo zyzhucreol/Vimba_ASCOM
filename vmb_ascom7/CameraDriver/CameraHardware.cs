@@ -60,6 +60,7 @@ namespace ASCOM.ZZVimbaX.Camera
         static private IVmbSystem vmb = null;
         static private ICamera cam = null;
         static private IOpenCamera openCam = null;
+        static private ICapturingModule.AllocationModeValue allocationMode = ICapturingModule.AllocationModeValue.AllocAndAnnounceFrame;
         //static byte[] imageBufferData = new byte[ccdHeight * ccdWidth * sizeof(ushort)];
 
         /// <summary>
@@ -1286,18 +1287,14 @@ namespace ASCOM.ZZVimbaX.Camera
 
             cameraLastExposureDuration = Duration;
             exposureStart = DateTime.Now;
-
-            //cam = vmb.GetCameraByID("DEV_000F314DA17F"); // Get the first available camera;
-            //IOpenCamera openCam = cam.Open(); // Open the camera
-            //var features = openCam.Features;
-            //features.ExposureTimeAbs = Duration * 1_000_000; // Set exposure time in microseconds
-            //var allocationMode = ICapturingModule.AllocationModeValue.AnnounceFrame;
-            //var streamCapture = openCam.PrepareCapture(allocationMode, 5);
+            cameraImageReady = false;
+            openCam.Features.ExposureTimeAbs = Duration * 1_000_000; // Set exposure time in microseconds
+            openCam.PrepareCapture(allocationMode, 5);
+            openCam.Features.AcquisitionStart();
             //var frame = streamCapture.WaitForFrame(TimeSpan.FromMilliseconds(1000));
             //Marshal.Copy((IntPtr)frame.ImageData, imageBufferData, 0, (int)ccdHeight * ccdWidth);
             //public static ushort[] image_data = new ushort[ccdHeight * ccdWidth];
-            System.Threading.Thread.Sleep((int)Duration * 1000);  // Sleep for the duration to simulate exposure 
-            cameraImageReady = true;
+            //System.Threading.Thread.Sleep((int)Duration * 1000);  // Sleep for the duration to simulate exposure 
             LogMessage("StartExposure", Duration.ToString() + " " + Light.ToString());
         }
 
