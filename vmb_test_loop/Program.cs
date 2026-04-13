@@ -15,7 +15,7 @@ class Program
         using var openCam = cam.Open(); // Open the camera
 
         int N_frames = 100;
-        int exposure_time = 5000;
+        int exposure_time = 1000000;
         int gain = 0;
         // Set camera attributes
         openCam.Features.ExposureTimeAbs = exposure_time; // Set the exposure time value in us

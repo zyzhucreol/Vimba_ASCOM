@@ -62,6 +62,7 @@ namespace ASCOM.ZZVimbaX.Camera
         static private IVmbSystem vmb = null;
         static private ICamera cam = null;
         static private IOpenCamera openCam = null;
+        static private IFrame frame = null;
         static private ICapturingModule.AllocationModeValue allocationMode = ICapturingModule.AllocationModeValue.AnnounceFrame;
         //static byte[] imageBufferData = new byte[ccdHeight * ccdWidth * sizeof(ushort)];
 
@@ -318,7 +319,7 @@ namespace ASCOM.ZZVimbaX.Camera
                         openCam.Features.ExposureTimeAbs = 500; // Set default exposure time in microseconds
                         openCam.Features.Gain = 0; // Set default gain in dB
                         openCam.Stream.Features.GVSPAdjustPacketSize(TimeSpan.FromSeconds(1));
-                        openCam.FrameReceived += (s, e) =>
+                        /* openCam.FrameReceived += (s, e) =>
                         {
                             cameraImageReady = true;
                             var frame = e.Frame;
@@ -334,7 +335,7 @@ namespace ASCOM.ZZVimbaX.Camera
                             // Convert byte[] (8-bit buffer holder) to ushort[] (16-bit image)
                             //ushort[] image_data = new ushort[pixelCount];
                             //Buffer.BlockCopy(imageBufferData, 0, image_data, 0, imageBufferData.Length);
-                        }; // IDisposable: Frame is automatically requeued
+                        }; // IDisposable: Frame is automatically requeued */
                         LogMessage("SetConnected", "Vimba X camera opened.");
                     }
                     else // Other device instances are connected so the hardware is already connected
@@ -926,12 +927,15 @@ namespace ASCOM.ZZVimbaX.Camera
                     LogMessage("ImageArray Get", "Throwing InvalidOperationException because of a call to ImageArray before the first image has been taken!");
                     throw new ASCOM.InvalidOperationException("Call to ImageArray before the first image has been taken!");
                 }
-
+                IntPtr imagePtr = frame.ImageData;
+                //byte[] imageBufferData = new byte[cameraNumX * cameraNumY * sizeof(ushort)];
                 cameraImageArray = new int[cameraNumX, cameraNumY];
+                //Marshal.Copy(imagePtr, imageBufferData, 0, cameraNumX * cameraNumY * sizeof(ushort));
                 for (int i = 0; i < cameraImageArray.GetLength(1); i++)
                 {
                     for (int j = 0; j < cameraImageArray.GetLength(0); j++)
                     {
+                        //cameraImageArray[j, i] = Marshal.ReadInt16(imagePtr, (i * cameraNumX + j) * sizeof(ushort));
                         cameraImageArray[j, i] = 32768;
                     }
                 }
@@ -973,6 +977,7 @@ namespace ASCOM.ZZVimbaX.Camera
         {
             get
             {
+                cameraImageReady = frame != null ? (frame.FrameStatus == IFrame.FrameStatusValue.Completed) : false;
                 LogMessage("ImageReady Get", cameraImageReady.ToString());
                 return cameraImageReady;
             }
@@ -1178,7 +1183,7 @@ namespace ASCOM.ZZVimbaX.Camera
                 double percent_completed = (exposureNow - exposureStart).TotalSeconds / cameraLastExposureDuration;
                 LogMessage("PercentCompleted Get", percent_completed.ToString());
                 if (percent_completed > 0.95) { currentCameraState = CameraStates.cameraIdle; }
-                return (short)(percent_completed);
+                return (short)(percent_completed * 100);
             }
         }
 
@@ -1318,8 +1323,9 @@ namespace ASCOM.ZZVimbaX.Camera
             exposureStart = DateTime.Now;
             currentCameraState = CameraStates.cameraExposing;
             LogMessage("StartExposure", Duration.ToString() + " " + Light.ToString());
-            openCam.StartFrameAcquisition(ICapturingModule.AllocationModeValue.AnnounceFrame,5);
-            Thread.Sleep(300);
+            frame = openCam.AcquireSingleImage(ICapturingModule.AllocationModeValue.AnnounceFrame, TimeSpan.FromSeconds(Duration+1));
+            //Thread.Sleep(300);
+            //openCam.Features.AcquisitionStart();
         }
 
         /// <summary>
