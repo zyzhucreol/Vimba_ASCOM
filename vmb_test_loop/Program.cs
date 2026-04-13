@@ -14,13 +14,12 @@ class Program
 
         using var openCam = cam.Open(); // Open the camera
 
-        int N_frames = 10;
+        int N_frames = 100;
         int exposure_time = 5000;
         int gain = 0;
         // Set camera attributes
         openCam.Features.ExposureTimeAbs = exposure_time; // Set the exposure time value in us
         openCam.Features.Gain = gain; // Set the gain value in dB
-
         // Register an event handler for incoming frames
         openCam.FrameReceived += (s, e) =>
         {
@@ -44,12 +43,12 @@ class Program
             Console.WriteLine($" {width} X {height} Sum of all pixels: {sum}");
             Console.WriteLine($"Optical power (readout units/us): {optical_power}");
         }; // IDisposable: Frame is automatically requeued
-
+        Console.WriteLine($"Stream count: {openCam.StreamCount}");
         // Convenience function to start acquisition
         for (int i = 0; i < N_frames; i++)
         {
             using var acquisition = openCam.StartFrameAcquisition();
-            Thread.Sleep(100); // gap between acquisitions to allow for data processing and printing
+            Thread.Sleep(300); // gap between acquisitions to allow for data processing and printing. 300 for optical throughput
         }
 
     } // IDisposable: Stops acquisition, closes camera, shuts down Vimba X

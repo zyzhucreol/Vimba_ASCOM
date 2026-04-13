@@ -65,7 +65,7 @@ namespace SynchronousGrab
                 Console.WriteLine("  cameraId    ID or extended ID of the camera to use (using the first camera found if not specified)");
                 Console.WriteLine("  frameCount  Number of frames to capture");
                 Console.WriteLine("  [ -h ]      Display this usage information)\n");
-                return;
+                //return;
             }
 
             IVmbSystem.Logger = LoggerCreator.CreateLogger();
@@ -114,21 +114,20 @@ namespace SynchronousGrab
                 await (Task)openCamera.Stream.Features.GVSPAdjustPacketSize(TimeSpan.FromSeconds(1));
             }
 
-            // prepare stream 0 for capturing
-            using var streamCapture = openCamera.PrepareCapture(allocationMode, 5);
-
             // start the acquisition in the camera
-            features.AcquisitionStart();
+            using var frame = openCamera.AcquireSingleImage(allocationMode, TimeSpan.FromSeconds(3));
+            Console.WriteLine($"Received frame with ID: {frame.Id}, status: {frame.FrameStatus}.");
+            //features.AcquisitionStart();
 
             // loop over captured frames
-            Enumerable.Range(0, frameCount).ToList().ForEach(_ =>
+            /*Enumerable.Range(0, frameCount).ToList().ForEach(_ =>
                                                              {
                                                                  using var frame = streamCapture.WaitForFrame(TimeSpan.FromMilliseconds(1000));
                                                                  Console.WriteLine($"Received frame with ID: {frame.Id}, status: {frame.FrameStatus}.");
                                                              });
-
+            */
             // stop the acquisition, terminate the capturing, close the camera and shutdown Vimba X
-            features.AcquisitionStop();
+            //features.AcquisitionStop();
         }
     }
 }
