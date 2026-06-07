@@ -251,7 +251,7 @@ if __name__ == "__main__":
             line.set_data(x, np.float64(data))
             ax.relim()            # Recompute the data limits
             ax.autoscale_view()   # Autoscale the view to the new limits
-            plt.xlim([350,800])
+            # plt.xlim([350,800])
             fig.canvas.draw()
             fig.canvas.flush_events()
             time.sleep(0.1)  # Control update speed

@@ -20,6 +20,7 @@ class Program
         // Set camera attributes
         openCam.Features.ExposureTimeAbs = exposure_time; // Set the exposure time value in us
         openCam.Features.Gain = gain; // Set the gain value in dB
+        openCam.Features.AcquisitionMode = "SingleFrame"; // Set acquisition mode to single frame
         // Register an event handler for incoming frames
         openCam.FrameReceived += (s, e) =>
         {
