@@ -31,8 +31,8 @@ class Program
         // Do something with incoming frames
         for (int i = 0; i < N_frames; ++i)
         {
-            IFrame frame = preparedStream.WaitForFrame(TimeSpan.FromMicroseconds(exposure_time*1.1));
-
+            IFrame frame = preparedStream.WaitForFrame(TimeSpan.FromMicroseconds(exposure_time*1.4));
+            
             // Do something with frame
             Console.WriteLine($"Frame Received! ID={frame.Id}");
             // Access image data
@@ -51,7 +51,7 @@ class Program
             float optical_power = sum / ((float)pixelCount * (float)exposure_time * (float)Math.Pow(10, (float)gain / 20));
             Console.WriteLine($" {width} X {height} Sum of all pixels: {sum}");
             Console.WriteLine($"Optical power (readout units/us): {optical_power}");
-
+            
             frame.Release();
         }
         openCam.Features.AcquisitionStop();
