@@ -469,6 +469,7 @@ namespace ASCOM.ZZVimbaX.Camera
         static private int cameraStartY = 0;
         static private DateTime exposureStart = DateTime.MinValue;
         static private double cameraLastExposureDuration = 0.0;
+        static private double frame_timeout = 3.0;
         static private bool cameraImageReady = false;
         static private CameraStates currentCameraState = CameraStates.cameraIdle;
         static private int[,] cameraImageArray;
@@ -1328,7 +1329,7 @@ namespace ASCOM.ZZVimbaX.Camera
             currentCameraState = CameraStates.cameraExposing;
             LogMessage("StartExposure", Duration.ToString() + " " + Light.ToString());
             openCam.StartFrameAcquisition();
-            frame = preparedStream.WaitForFrame(TimeSpan.FromSeconds(3.0)); // Start the acquisition and wait for the first frame to be ready, to ensure that the camera is exposing before we return from this method
+            frame = preparedStream.WaitForFrame(TimeSpan.FromSeconds(Math.Max(Duration*1.4,frame_timeout))); // Start the acquisition and wait for the first frame to be ready, to ensure that the camera is exposing before we return from this method
             
             cameraImageReady = true;
         }
