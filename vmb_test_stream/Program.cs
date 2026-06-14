@@ -21,18 +21,20 @@ class Program
         int N_frames = 100;
         int exposure_time = 100000;
         int gain = 0;
+        double frame_timeout = 3.0;
         // Set camera attributes
         openCam.Features.ExposureTimeAbs = exposure_time; // Set the exposure time value in us
         openCam.Features.Gain = gain; // Set the gain value in dB
         openCam.Features.AcquisitionMode = "Continuous"; // Set acquisition mode to continuous
         IStream stream = openCam.Stream;
         IStreamCapture preparedStream = stream.PrepareCapture(AllocationModeValue.AnnounceFrame, 10);
-        openCam.Features.AcquisitionStart();
+        openCam.StartFrameAcquisition(); // Start acquisition
         // Do something with incoming frames
         for (int i = 0; i < N_frames; ++i)
         {
-            IFrame frame = preparedStream.WaitForFrame(TimeSpan.FromMicroseconds(exposure_time*1.4));
-            
+            //IFrame frame = preparedStream.WaitForFrame(TimeSpan.FromMicroseconds(exposure_time*1.4)); // adaptive wait timeout
+            IFrame frame = preparedStream.WaitForFrame(TimeSpan.FromSeconds(frame_timeout)); // max wait timeout
+
             // Do something with frame
             Console.WriteLine($"Frame Received! ID={frame.Id}");
             // Access image data

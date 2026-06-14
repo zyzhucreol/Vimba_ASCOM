@@ -24,6 +24,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using VmbNET;
+using static VmbNET.ICapturingModule;
 
 namespace ASCOM.ZZVimbaX.Camera
 {
@@ -63,6 +64,8 @@ namespace ASCOM.ZZVimbaX.Camera
         static private ICamera cam = null;
         static private IOpenCamera openCam = null;
         static private IFrame frame = null;
+        static private IStream stream = null;
+        static private IStreamCapture preparedStream = null;
         static private ICapturingModule.AllocationModeValue allocationMode = ICapturingModule.AllocationModeValue.AnnounceFrame;
         //static byte[] imageBufferData = new byte[ccdHeight * ccdWidth * sizeof(ushort)];
 
@@ -318,24 +321,10 @@ namespace ASCOM.ZZVimbaX.Camera
                         openCam = cam.Open(); // Open the camera
                         openCam.Features.ExposureTimeAbs = 500; // Set default exposure time in microseconds
                         openCam.Features.Gain = 0; // Set default gain in dB
+                        openCam.Features.AcquisitionMode = "SingleFrame"; // Set acquisition mode to single frame
                         openCam.Stream.Features.GVSPAdjustPacketSize(TimeSpan.FromSeconds(1));
-                        /* openCam.FrameReceived += (s, e) =>
-                        {
-                            cameraImageReady = true;
-                            var frame = e.Frame;
-                            //LogMessage("ImageReady",$"Frame Received! ID={frame.Id} status={frame.FrameStatus}");
-
-                            // Access image data
-                            uint width = frame.Width;
-                            uint height = frame.Height;
-                            uint pixelCount = width * height;
-                            IntPtr imagePtr = (IntPtr)frame.ImageData;
-                            byte[] imageBufferData = new byte[pixelCount * sizeof(ushort)];
-                            Marshal.Copy(imagePtr, imageBufferData, 0, (int)pixelCount);
-                            // Convert byte[] (8-bit buffer holder) to ushort[] (16-bit image)
-                            //ushort[] image_data = new ushort[pixelCount];
-                            //Buffer.BlockCopy(imageBufferData, 0, image_data, 0, imageBufferData.Length);
-                        }; // IDisposable: Frame is automatically requeued */
+                        stream = openCam.Stream;
+                        preparedStream = stream.PrepareCapture(AllocationModeValue.AnnounceFrame, 10);
                         LogMessage("SetConnected", "Vimba X camera opened.");
                     }
                     else // Other device instances are connected so the hardware is already connected
@@ -368,6 +357,8 @@ namespace ASCOM.ZZVimbaX.Camera
                     {
                         if (cam != null) { cam = null; }
                         if (openCam != null) { openCam.Dispose(); openCam = null; }
+                        //stream?.Close();
+                        //preparedStream?.Dispose();
                         LogMessage("SetConnected", "Vimba X camera closed and API shut down.");
                     }
                     else // Other device instances are connected so do not disconnect the hardware
@@ -474,13 +465,6 @@ namespace ASCOM.ZZVimbaX.Camera
         static private CameraStates currentCameraState = CameraStates.cameraIdle;
         static private int[,] cameraImageArray;
         static private object[,] cameraImageArrayVariant;
-
-        // Vimba X API objects
-        //static IVmbSystem vmb = IVmbSystem.Startup(); // API startup (loads transport layers);
-        //private static ICamera cam = vmb.GetCameras()[0]; // Get the first available camera;
-        //public static IOpenCamera openCam = cam.Open(); // Open the camera
-        //public static byte[] imageBufferData = new byte[ccdHeight * ccdWidth * sizeof(ushort)];
-        //public static ushort[] image_data = new ushort[ccdHeight * ccdWidth];
 
         /// <summary>
         /// Aborts the current exposure, if any, and returns the camera to Idle state.
@@ -927,18 +911,22 @@ namespace ASCOM.ZZVimbaX.Camera
                     LogMessage("ImageArray Get", "Throwing InvalidOperationException because of a call to ImageArray before the first image has been taken!");
                     throw new ASCOM.InvalidOperationException("Call to ImageArray before the first image has been taken!");
                 }
+                currentCameraState = CameraStates.cameraDownload;
                 IntPtr imagePtr = frame.ImageData;
-                //byte[] imageBufferData = new byte[cameraNumX * cameraNumY * sizeof(ushort)];
+                int pixelCount = cameraNumX * cameraNumY;
+                // Allocate a 1D buffer to receive the image data as 16-bit values
+                ushort[] imageBufferData = new ushort[pixelCount];
+                Marshal.Copy(imagePtr, (short[])(object)imageBufferData, 0, pixelCount);
                 cameraImageArray = new int[cameraNumX, cameraNumY];
-                //Marshal.Copy(imagePtr, imageBufferData, 0, cameraNumX * cameraNumY * sizeof(ushort));
-                for (int i = 0; i < cameraImageArray.GetLength(1); i++)
+                for (int y = 0; y < cameraNumY; y++)
                 {
-                    for (int j = 0; j < cameraImageArray.GetLength(0); j++)
+                    for (int x = 0; x < cameraNumX; x++)
                     {
-                        //cameraImageArray[j, i] = Marshal.ReadInt16(imagePtr, (i * cameraNumX + j) * sizeof(ushort));
-                        cameraImageArray[j, i] = 32768;
+                        // Convert ushort to int for the 2D array
+                        cameraImageArray[x, y] = imageBufferData[y * cameraNumX + x];
                     }
                 }
+                currentCameraState = CameraStates.cameraIdle;
                 return cameraImageArray;
             }
         }
@@ -977,9 +965,30 @@ namespace ASCOM.ZZVimbaX.Camera
         {
             get
             {
-                cameraImageReady = frame != null ? (frame.FrameStatus == IFrame.FrameStatusValue.Completed) : false;
-                LogMessage("ImageReady Get", cameraImageReady.ToString());
-                return cameraImageReady;
+                if (cameraLastExposureDuration <= 0)
+                {
+                    LogMessage("ImageReady Get", "No exposure has been taken yet, so ImageReady is false.");
+                    return false;
+                    //throw new ASCOM.InvalidOperationException("Call to ImageReady before the first image has been taken!");
+                }
+                else
+                {
+                    frame = preparedStream.WaitForFrame(TimeSpan.FromSeconds(3.0));
+                    cameraImageReady = frame != null;
+                    /*try
+                    {
+                        frame = preparedStream.WaitForFrame(TimeSpan.FromSeconds(3.0));
+                        cameraImageReady = frame != null;
+                    }
+                    catch (Exception ex)
+                    {
+                        LogMessage("ImageReady Get", $"WaitForFrame failed: {ex.Message}");
+                        cameraImageReady = false;
+                    }*/
+                    currentCameraState = cameraImageReady ? CameraStates.cameraReading : CameraStates.cameraExposing;
+                    LogMessage("ImageReady Get", cameraImageReady.ToString());
+                    return cameraImageReady;
+                }
             }
         }
 
@@ -1323,9 +1332,7 @@ namespace ASCOM.ZZVimbaX.Camera
             exposureStart = DateTime.Now;
             currentCameraState = CameraStates.cameraExposing;
             LogMessage("StartExposure", Duration.ToString() + " " + Light.ToString());
-            frame = openCam.AcquireSingleImage(ICapturingModule.AllocationModeValue.AnnounceFrame, TimeSpan.FromSeconds(Duration+1));
-            //Thread.Sleep(300);
-            //openCam.Features.AcquisitionStart();
+            openCam.StartFrameAcquisition();
         }
 
         /// <summary>
@@ -1341,7 +1348,7 @@ namespace ASCOM.ZZVimbaX.Camera
             set
             {
                 cameraStartX = value;
-                LogMessage("StartX Set", value.ToString());
+                LogMessage("StartX set", value.ToString());
             }
         }
 
