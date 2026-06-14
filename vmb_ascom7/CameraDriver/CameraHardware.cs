@@ -289,7 +289,10 @@ namespace ASCOM.ZZVimbaX.Camera
 
             try
             {
+                if (preparedStream != null) { preparedStream.TearDown(); preparedStream = null; }
+                if (stream != null) { stream.Close(); stream = null; }
                 if (openCam != null) { openCam.Dispose(); openCam = null; }
+                if (cam != null) { cam = null; }
                 if (vmb != null) { vmb.Dispose(); vmb = null; }
             }
             catch { }
@@ -322,6 +325,11 @@ namespace ASCOM.ZZVimbaX.Camera
                         openCam.Features.ExposureTimeAbs = 500; // Set default exposure time in microseconds
                         openCam.Features.Gain = 0; // Set default gain in dB
                         openCam.Features.AcquisitionMode = "SingleFrame"; // Set acquisition mode to single frame
+                        openCam.Features.PixelFormat = "BayerRG12";
+                        openCam.Features.BalanceRatioSelector = "Red";
+                        openCam.Features.BalanceRatioAbs = 1.15;
+                        openCam.Features.BalanceRatioSelector = "Blue";
+                        openCam.Features.BalanceRatioAbs = 1.50;
                         openCam.Stream.Features.GVSPAdjustPacketSize(TimeSpan.FromSeconds(1));
                         stream = openCam.Stream;
                         preparedStream = stream.PrepareCapture(AllocationModeValue.AnnounceFrame, 10);
@@ -355,10 +363,10 @@ namespace ASCOM.ZZVimbaX.Camera
                     // Check whether there are now any connected driver instances 
                     if (uniqueIds.Count == 0) // There are no connected driver instances so disconnect from the hardware
                     {
-                        if (cam != null) { cam = null; }
+                        if (preparedStream != null) { preparedStream.TearDown(); preparedStream = null; }
+                        if (stream != null) { stream.Close(); stream = null; }
                         if (openCam != null) { openCam.Dispose(); openCam = null; }
-                        //stream?.Close();
-                        //preparedStream?.Dispose();
+                        if (cam != null) { cam = null; }
                         LogMessage("SetConnected", "Vimba X camera closed and API shut down.");
                     }
                     else // Other device instances are connected so do not disconnect the hardware
@@ -915,18 +923,19 @@ namespace ASCOM.ZZVimbaX.Camera
                 IntPtr imagePtr = frame.ImageData;
                 int pixelCount = cameraNumX * cameraNumY;
                 // Allocate a 1D buffer to receive the image data as 16-bit values
-                ushort[] imageBufferData = new ushort[pixelCount];
-                Marshal.Copy(imagePtr, (short[])(object)imageBufferData, 0, pixelCount);
+                ushort[] image_data = new ushort[pixelCount];
+                Marshal.Copy(imagePtr, (short[])(object)image_data, 0, pixelCount);
                 cameraImageArray = new int[cameraNumX, cameraNumY];
                 for (int y = 0; y < cameraNumY; y++)
                 {
                     for (int x = 0; x < cameraNumX; x++)
                     {
                         // Convert ushort to int for the 2D array
-                        cameraImageArray[x, y] = imageBufferData[y * cameraNumX + x];
+                        cameraImageArray[x, y] = image_data[y * cameraNumX + x];
                     }
                 }
                 currentCameraState = CameraStates.cameraIdle;
+                frame.Release();
                 return cameraImageArray;
             }
         }
@@ -961,7 +970,7 @@ namespace ASCOM.ZZVimbaX.Camera
         /// Returns a flag indicating whether the image is ready to be downloaded from the camera
         /// </summary>
         /// <value><c>true</c> if [image ready]; otherwise, <c>false</c>.</value>
-        static internal bool ImageReady
+        public static bool ImageReady
         {
             get
             {
@@ -971,24 +980,10 @@ namespace ASCOM.ZZVimbaX.Camera
                     return false;
                     //throw new ASCOM.InvalidOperationException("Call to ImageReady before the first image has been taken!");
                 }
-                else
-                {
-                    frame = preparedStream.WaitForFrame(TimeSpan.FromSeconds(3.0));
-                    cameraImageReady = frame != null;
-                    /*try
-                    {
-                        frame = preparedStream.WaitForFrame(TimeSpan.FromSeconds(3.0));
-                        cameraImageReady = frame != null;
-                    }
-                    catch (Exception ex)
-                    {
-                        LogMessage("ImageReady Get", $"WaitForFrame failed: {ex.Message}");
-                        cameraImageReady = false;
-                    }*/
-                    currentCameraState = cameraImageReady ? CameraStates.cameraReading : CameraStates.cameraExposing;
-                    LogMessage("ImageReady Get", cameraImageReady.ToString());
-                    return cameraImageReady;
-                }
+                currentCameraState = cameraImageReady ? CameraStates.cameraReading : CameraStates.cameraExposing;
+                LogMessage("ImageReady Get", cameraImageReady.ToString());
+                return cameraImageReady;
+                
             }
         }
 
@@ -1053,8 +1048,8 @@ namespace ASCOM.ZZVimbaX.Camera
         {
             get
             {
-                LogMessage("MaxADU Get", "65535");
-                return 65535;
+                LogMessage("MaxADU Get", "4095");
+                return 4095;
             }
         }
 
@@ -1317,7 +1312,7 @@ namespace ASCOM.ZZVimbaX.Camera
         /// </summary>
         /// <param name="Duration">Duration of exposure in seconds, can be zero if <see cref="StartExposure">Light</see> is <c>false</c></param>
         /// <param name="Light"><c>true</c> for light frame, <c>false</c> for dark frame (ignored if no shutter)</param>
-        static internal void StartExposure(double Duration, bool Light)
+        public static void StartExposure(double Duration, bool Light)
         {
             cameraImageReady = false;
 
@@ -1333,6 +1328,9 @@ namespace ASCOM.ZZVimbaX.Camera
             currentCameraState = CameraStates.cameraExposing;
             LogMessage("StartExposure", Duration.ToString() + " " + Light.ToString());
             openCam.StartFrameAcquisition();
+            frame = preparedStream.WaitForFrame(TimeSpan.FromSeconds(3.0)); // Start the acquisition and wait for the first frame to be ready, to ensure that the camera is exposing before we return from this method
+            
+            cameraImageReady = true;
         }
 
         /// <summary>

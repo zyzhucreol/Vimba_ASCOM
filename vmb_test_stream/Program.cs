@@ -26,6 +26,7 @@ class Program
         openCam.Features.ExposureTimeAbs = exposure_time; // Set the exposure time value in us
         openCam.Features.Gain = gain; // Set the gain value in dB
         openCam.Features.AcquisitionMode = "Continuous"; // Set acquisition mode to continuous
+        openCam.Features.PixelFormat = "BayerRG12"; // Set pixel format to BayerRG12
         IStream stream = openCam.Stream;
         IStreamCapture preparedStream = stream.PrepareCapture(AllocationModeValue.AnnounceFrame, 10);
         openCam.StartFrameAcquisition(); // Start acquisition
@@ -41,16 +42,16 @@ class Program
             uint width = frame.Width;
             uint height = frame.Height;
             uint pixelCount = width * height;
-            IntPtr imagePtr = (IntPtr)frame.ImageData;
-            byte[] imageBufferData = new byte[pixelCount * sizeof(ushort)];
-            Marshal.Copy(imagePtr, imageBufferData, 0, (int)pixelCount);
-            // Convert byte[] (8-bit buffer holder) to ushort[] (16-bit image)
+            IntPtr imagePtr = frame.ImageData;
+            // Copy native 16-bit pixels directly into a ushort[]. The (short[])(object) cast
+            // is safe because ushort[] and short[] share the same runtime representation.
             ushort[] image_data = new ushort[pixelCount];
-            Buffer.BlockCopy(imageBufferData, 0, image_data, 0, imageBufferData.Length);
+            Marshal.Copy(imagePtr, (short[])(object)image_data, 0, (int)pixelCount);
 
             // Simple image processing
             float sum = image_data.Sum(x => (float)x);
             float optical_power = sum / ((float)pixelCount * (float)exposure_time * (float)Math.Pow(10, (float)gain / 20));
+            Console.WriteLine($" Top left pixel value {image_data[0]} Bottom right pixel value {image_data[pixelCount - 1]}");
             Console.WriteLine($" {width} X {height} Sum of all pixels: {sum}");
             Console.WriteLine($"Optical power (readout units/us): {optical_power}");
             
