@@ -327,12 +327,10 @@ namespace ASCOM.ZZVimbaX.Camera
                         openCam.Features.AcquisitionMode = "SingleFrame"; // Set acquisition mode to single frame
                         openCam.Features.PixelFormat = "BayerRG12";
                         openCam.Features.BalanceRatioSelector = "Red";
-                        openCam.Features.BalanceRatioAbs = 1.15;
+                        openCam.Features.BalanceRatioAbs = 1.0;
                         openCam.Features.BalanceRatioSelector = "Blue";
-                        openCam.Features.BalanceRatioAbs = 1.50;
+                        openCam.Features.BalanceRatioAbs = 1.05;
                         openCam.Stream.Features.GVSPAdjustPacketSize(TimeSpan.FromSeconds(1));
-                        stream = openCam.Stream;
-                        preparedStream = stream.PrepareCapture(AllocationModeValue.AnnounceFrame, 10);
                         LogMessage("SetConnected", "Vimba X camera opened.");
                     }
                     else // Other device instances are connected so the hardware is already connected
@@ -480,9 +478,11 @@ namespace ASCOM.ZZVimbaX.Camera
         /// </summary>
         static internal void AbortExposure()
         {
-            //openCam.Features.AcquisitionAbort();
-            LogMessage("AbortExposure", "Not implemented");
-            throw new PropertyNotImplementedException("AbortExposure", true);
+            openCam.Features.AcquisitionStop();
+            preparedStream?.TearDown();
+            stream?.Dispose();
+            LogMessage("AbortExposure", "Exposure aborted");
+            //throw new PropertyNotImplementedException("AbortExposure", true);
         }
 
         /// <summary>
@@ -608,8 +608,8 @@ namespace ASCOM.ZZVimbaX.Camera
         {
             get
             {
-                LogMessage("CanAbortExposure Get", false.ToString());
-                return false;
+                LogMessage("CanAbortExposure Get", true.ToString());
+                return true;
             }
         }
 
@@ -696,8 +696,8 @@ namespace ASCOM.ZZVimbaX.Camera
         {
             get
             {
-                LogMessage("CanStopExposure Get", false.ToString());
-                return false;
+                LogMessage("CanStopExposure Get", true.ToString());
+                return true;
             }
         }
 
@@ -1328,6 +1328,8 @@ namespace ASCOM.ZZVimbaX.Camera
             exposureStart = DateTime.Now;
             currentCameraState = CameraStates.cameraExposing;
             LogMessage("StartExposure", Duration.ToString() + " " + Light.ToString());
+            stream = openCam.Stream;
+            preparedStream = stream.PrepareCapture(AllocationModeValue.AnnounceFrame, 10);
             openCam.StartFrameAcquisition();
             frame = preparedStream.WaitForFrame(TimeSpan.FromSeconds(Math.Max(Duration*1.4,frame_timeout))); // Start the acquisition and wait for the first frame to be ready, to ensure that the camera is exposing before we return from this method
             
@@ -1373,9 +1375,11 @@ namespace ASCOM.ZZVimbaX.Camera
         /// </summary>
         static internal void StopExposure()
         {
-            //openCam.Features.AcquisitionStop();
-            LogMessage("StopExposure", "Not implemented");
-            throw new PropertyNotImplementedException("StopExposure", true);
+            openCam.Features.AcquisitionStop();
+            preparedStream?.TearDown();
+            stream?.Dispose();
+            LogMessage("StopExposure", "Exposure stopped");
+            //throw new PropertyNotImplementedException("StopExposure", true);
         }
 
         /// <summary>
