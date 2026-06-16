@@ -111,9 +111,9 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="CameraDriver\CameraHardware.cs" />
     <Compile Include="ClassFactory.cs" />
     <Compile Include="CameraDriver\CameraDriver.cs" />
-    <Compile Include="CameraDriver\CameraHardware.cs" />
     <Compile Include="GarbageCollection.cs" />
     <Compile Include="LocalServer.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
