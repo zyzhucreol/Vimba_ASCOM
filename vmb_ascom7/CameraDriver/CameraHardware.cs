@@ -66,7 +66,7 @@ namespace ASCOM.ZZVimbaX.Camera
         static private IFrame frame = null;
         static private IStream stream = null;
         static private IStreamCapture preparedStream = null;
-        static private ICapturingModule.AllocationModeValue allocationMode = ICapturingModule.AllocationModeValue.AnnounceFrame;
+        static private ushort[] image_data = new ushort[ccdHeight * ccdWidth];
         //static byte[] imageBufferData = new byte[ccdHeight * ccdWidth * sizeof(ushort)];
 
         /// <summary>
@@ -327,12 +327,25 @@ namespace ASCOM.ZZVimbaX.Camera
                         openCam.Features.AcquisitionMode = "SingleFrame"; // Set acquisition mode to single frame
                         openCam.Features.PixelFormat = "BayerRG12";
                         openCam.Features.BalanceRatioSelector = "Red";
-                        openCam.Features.BalanceRatioAbs = 1.15;
+                        openCam.Features.BalanceRatioAbs = 1.0;
                         openCam.Features.BalanceRatioSelector = "Blue";
-                        openCam.Features.BalanceRatioAbs = 1.50;
+                        openCam.Features.BalanceRatioAbs = 1.05;
                         openCam.Stream.Features.GVSPAdjustPacketSize(TimeSpan.FromSeconds(1));
                         stream = openCam.Stream;
-                        preparedStream = stream.PrepareCapture(AllocationModeValue.AnnounceFrame, 10);
+                        stream.FrameReceived += (s, e) =>
+                        {
+                            IFrame frame = e.Frame;
+
+                            // Do something with frame
+                            IntPtr imagePtr = frame.ImageData;
+                            int pixelCount = cameraNumX * cameraNumY;
+                            // Allocate a 1D buffer to receive the image data as 16-bit values
+                            //ushort[] image_data = new ushort[pixelCount];
+                            Marshal.Copy(imagePtr, (short[])(object)image_data, 0, pixelCount);
+                            cameraImageReady = true;
+                            // Requeue the instance of IFrame internally
+                            frame.Release();
+                        };
                         LogMessage("SetConnected", "Vimba X camera opened.");
                     }
                     else // Other device instances are connected so the hardware is already connected
@@ -364,7 +377,7 @@ namespace ASCOM.ZZVimbaX.Camera
                     if (uniqueIds.Count == 0) // There are no connected driver instances so disconnect from the hardware
                     {
                         if (preparedStream != null) { preparedStream.TearDown(); preparedStream = null; }
-                        if (stream != null) { stream.Close(); stream = null; }
+                        if (stream != null) { stream.RemoveAllFrameEventHandlers(); stream.Close(); stream = null; }
                         if (openCam != null) { openCam.Dispose(); openCam = null; }
                         if (cam != null) { cam = null; }
                         LogMessage("SetConnected", "Vimba X camera closed and API shut down.");
@@ -480,8 +493,9 @@ namespace ASCOM.ZZVimbaX.Camera
         /// </summary>
         static internal void AbortExposure()
         {
-            //openCam.Features.AcquisitionAbort();
-            LogMessage("AbortExposure", "Not implemented");
+            openCam.Features.AcquisitionStop();
+            preparedStream.TearDown();
+            LogMessage("AbortExposure", "Exposure aborted");
             throw new PropertyNotImplementedException("AbortExposure", true);
         }
 
@@ -921,11 +935,6 @@ namespace ASCOM.ZZVimbaX.Camera
                     throw new ASCOM.InvalidOperationException("Call to ImageArray before the first image has been taken!");
                 }
                 currentCameraState = CameraStates.cameraDownload;
-                IntPtr imagePtr = frame.ImageData;
-                int pixelCount = cameraNumX * cameraNumY;
-                // Allocate a 1D buffer to receive the image data as 16-bit values
-                ushort[] image_data = new ushort[pixelCount];
-                Marshal.Copy(imagePtr, (short[])(object)image_data, 0, pixelCount);
                 cameraImageArray = new int[cameraNumX, cameraNumY];
                 for (int y = 0; y < cameraNumY; y++)
                 {
@@ -936,7 +945,6 @@ namespace ASCOM.ZZVimbaX.Camera
                     }
                 }
                 currentCameraState = CameraStates.cameraIdle;
-                frame.Release();
                 return cameraImageArray;
             }
         }
@@ -1328,10 +1336,11 @@ namespace ASCOM.ZZVimbaX.Camera
             exposureStart = DateTime.Now;
             currentCameraState = CameraStates.cameraExposing;
             LogMessage("StartExposure", Duration.ToString() + " " + Light.ToString());
-            openCam.StartFrameAcquisition();
-            frame = preparedStream.WaitForFrame(TimeSpan.FromSeconds(Math.Max(Duration*1.4,frame_timeout))); // Start the acquisition and wait for the first frame to be ready, to ensure that the camera is exposing before we return from this method
+            preparedStream = stream.PrepareCapture(AllocationModeValue.AnnounceFrame, 10);
+            openCam.Features.AcquisitionStart();
+            //frame = preparedStream.WaitForFrame(TimeSpan.FromSeconds(Math.Max(Duration*1.4,frame_timeout))); // Start the acquisition and wait for the first frame to be ready, to ensure that the camera is exposing before we return from this method
             
-            cameraImageReady = true;
+            //cameraImageReady = true;
         }
 
         /// <summary>
@@ -1374,7 +1383,8 @@ namespace ASCOM.ZZVimbaX.Camera
         static internal void StopExposure()
         {
             openCam.Features.AcquisitionStop();
-            LogMessage("StopExposure", "Not implemented");
+            preparedStream.TearDown();
+            LogMessage("StopExposure", "Exposure stopped");
             //throw new PropertyNotImplementedException("StopExposure", true);
         }
 
