@@ -696,8 +696,8 @@ namespace ASCOM.ZZVimbaX.Camera
         {
             get
             {
-                LogMessage("CanStopExposure Get", false.ToString());
-                return false;
+                LogMessage("CanStopExposure Get", true.ToString());
+                return true;
             }
         }
 
@@ -1373,9 +1373,9 @@ namespace ASCOM.ZZVimbaX.Camera
         /// </summary>
         static internal void StopExposure()
         {
-            //openCam.Features.AcquisitionStop();
+            openCam.Features.AcquisitionStop();
             LogMessage("StopExposure", "Not implemented");
-            throw new PropertyNotImplementedException("StopExposure", true);
+            //throw new PropertyNotImplementedException("StopExposure", true);
         }
 
         /// <summary>
