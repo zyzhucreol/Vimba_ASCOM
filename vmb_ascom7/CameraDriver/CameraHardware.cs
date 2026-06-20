@@ -50,7 +50,7 @@ namespace ASCOM.ZZVimbaX.Camera
         internal const string traceStateDefault = "true";
 
         private static string DriverProgId = ""; // ASCOM DeviceID (COM ProgID) for this driver, the value is set by the driver's class initialiser.
-        private static string DriverDescription = "AVT camera ASCOM driver using ZZVimbaX"; // The value is set by the driver's class initialiser.
+        private static string DriverDescription = ""; // The value is set by the driver's class initialiser.
         internal static string comPort; // COM port name (if required)
         private static bool connectedState; // Local server's connected state
         private static bool runOnce = false; // Flag to enable "one-off" activities only to run once.
@@ -63,9 +63,10 @@ namespace ASCOM.ZZVimbaX.Camera
         static private IVmbSystem vmb = null;
         static private ICamera cam = null;
         static private IOpenCamera openCam = null;
+        static private IFrame frame = null;
         static private IStream stream = null;
         static private IStreamCapture preparedStream = null;
-        static private ushort[] image_data = new ushort[ccdHeight * ccdWidth];
+        static private ICapturingModule.AllocationModeValue allocationMode = ICapturingModule.AllocationModeValue.AnnounceFrame;
         //static byte[] imageBufferData = new byte[ccdHeight * ccdWidth * sizeof(ushort)];
 
         /// <summary>
@@ -330,22 +331,6 @@ namespace ASCOM.ZZVimbaX.Camera
                         openCam.Features.BalanceRatioSelector = "Blue";
                         openCam.Features.BalanceRatioAbs = 1.05;
                         openCam.Stream.Features.GVSPAdjustPacketSize(TimeSpan.FromSeconds(1));
-                        stream = openCam.Stream;
-                        stream.FrameReceived += (s, e) =>
-                        {
-                            IFrame frame = e.Frame;
-
-                            // Do something with frame
-                            IntPtr imagePtr = frame.ImageData;
-                            int pixelCount = cameraNumX * cameraNumY;
-                            // Allocate a 1D buffer to receive the image data as 16-bit values
-                            //ushort[] image_data = new ushort[pixelCount];
-                            Marshal.Copy(imagePtr, (short[])(object)image_data, 0, pixelCount);
-                            cameraImageReady = true;
-                            // Requeue the instance of IFrame internally
-                            frame.Release();
-                        };
-                        preparedStream = stream.PrepareCapture(AllocationModeValue.AnnounceFrame, 10);
                         LogMessage("SetConnected", "Vimba X camera opened.");
                     }
                     else // Other device instances are connected so the hardware is already connected
@@ -377,7 +362,7 @@ namespace ASCOM.ZZVimbaX.Camera
                     if (uniqueIds.Count == 0) // There are no connected driver instances so disconnect from the hardware
                     {
                         if (preparedStream != null) { preparedStream.TearDown(); preparedStream = null; }
-                        if (stream != null) { stream.RemoveAllFrameEventHandlers(); stream.Close(); stream = null; }
+                        if (stream != null) { stream.Close(); stream = null; }
                         if (openCam != null) { openCam.Dispose(); openCam = null; }
                         if (cam != null) { cam = null; }
                         LogMessage("SetConnected", "Vimba X camera closed and API shut down.");
@@ -494,7 +479,10 @@ namespace ASCOM.ZZVimbaX.Camera
         static internal void AbortExposure()
         {
             openCam.Features.AcquisitionStop();
+            preparedStream?.TearDown();
+            stream?.Dispose();
             LogMessage("AbortExposure", "Exposure aborted");
+            //throw new PropertyNotImplementedException("AbortExposure", true);
         }
 
         /// <summary>
@@ -932,6 +920,12 @@ namespace ASCOM.ZZVimbaX.Camera
                     LogMessage("ImageArray Get", "Throwing InvalidOperationException because of a call to ImageArray before the first image has been taken!");
                     throw new ASCOM.InvalidOperationException("Call to ImageArray before the first image has been taken!");
                 }
+                currentCameraState = CameraStates.cameraDownload;
+                IntPtr imagePtr = frame.ImageData;
+                int pixelCount = cameraNumX * cameraNumY;
+                // Allocate a 1D buffer to receive the image data as 16-bit values
+                ushort[] image_data = new ushort[pixelCount];
+                Marshal.Copy(imagePtr, (short[])(object)image_data, 0, pixelCount);
                 cameraImageArray = new int[cameraNumX, cameraNumY];
                 for (int y = 0; y < cameraNumY; y++)
                 {
@@ -942,6 +936,7 @@ namespace ASCOM.ZZVimbaX.Camera
                     }
                 }
                 currentCameraState = CameraStates.cameraIdle;
+                frame.Release();
                 return cameraImageArray;
             }
         }
@@ -986,7 +981,7 @@ namespace ASCOM.ZZVimbaX.Camera
                     return false;
                     //throw new ASCOM.InvalidOperationException("Call to ImageReady before the first image has been taken!");
                 }
-                currentCameraState = cameraImageReady ? CameraStates.cameraDownload : CameraStates.cameraExposing;
+                currentCameraState = cameraImageReady ? CameraStates.cameraReading : CameraStates.cameraExposing;
                 LogMessage("ImageReady Get", cameraImageReady.ToString());
                 return cameraImageReady;
                 
@@ -1333,25 +1328,12 @@ namespace ASCOM.ZZVimbaX.Camera
             exposureStart = DateTime.Now;
             currentCameraState = CameraStates.cameraExposing;
             LogMessage("StartExposure", Duration.ToString() + " " + Light.ToString());
-
-            // Clean up the previous capture context before starting a new one.
-            // In SingleFrame mode acquisition auto-stops after a frame, but the
-            // buffers from the previous PrepareCapture are still queued. Calling
-            // PrepareCapture a second time without TearDown causes Vimba to fail
-            // with "attempting to queue a frame but received an error".
-            try { openCam.Features.AcquisitionStop(); } catch { /* may already be stopped */ }
-            //if (preparedStream != null)
-            //{
-            //    try { preparedStream.TearDown(); } catch { /* already torn down */ }
-            //    preparedStream = null;
-            //}
-
-            //preparedStream = stream.PrepareCapture(AllocationModeValue.AnnounceFrame, 10);
-            openCam.Features.AcquisitionStart();
-
-            // synchronous acquisition - deprecated in favour of asynchronous acquisition using the event handler on the stream, but left here as an example of how to do synchronous acquisition if required.
-            //frame = preparedStream.WaitForFrame(TimeSpan.FromSeconds(Math.Max(Duration*1.4,frame_timeout))); // Start the acquisition and wait for the first frame to be ready, to ensure that the camera is exposing before we return from this method
-            //cameraImageReady = true;
+            stream = openCam.Stream;
+            preparedStream = stream.PrepareCapture(AllocationModeValue.AnnounceFrame, 10);
+            openCam.StartFrameAcquisition();
+            frame = preparedStream.WaitForFrame(TimeSpan.FromSeconds(Math.Max(Duration*1.4,frame_timeout))); // Start the acquisition and wait for the first frame to be ready, to ensure that the camera is exposing before we return from this method
+            
+            cameraImageReady = true;
         }
 
         /// <summary>
@@ -1393,8 +1375,11 @@ namespace ASCOM.ZZVimbaX.Camera
         /// </summary>
         static internal void StopExposure()
         {
-            try { openCam.Features.AcquisitionStop(); } catch { /* may already be stopped */ }
+            openCam.Features.AcquisitionStop();
+            preparedStream?.TearDown();
+            stream?.Dispose();
             LogMessage("StopExposure", "Exposure stopped");
+            //throw new PropertyNotImplementedException("StopExposure", true);
         }
 
         /// <summary>
