@@ -985,7 +985,7 @@ namespace ASCOM.ZZVimbaX.Camera
                     return false;
                     //throw new ASCOM.InvalidOperationException("Call to ImageReady before the first image has been taken!");
                 }
-                currentCameraState = cameraImageReady ? CameraStates.cameraDownload : CameraStates.cameraExposing;
+                currentCameraState = cameraImageReady ? CameraStates.cameraIdle : CameraStates.cameraExposing;
                 LogMessage("ImageReady Get", cameraImageReady.ToString());
                 return cameraImageReady;
                 
@@ -1191,7 +1191,7 @@ namespace ASCOM.ZZVimbaX.Camera
                 DateTime exposureNow = DateTime.Now;
                 double percent_completed = (exposureNow - exposureStart).TotalSeconds / cameraLastExposureDuration;
                 LogMessage("PercentCompleted Get", percent_completed.ToString());
-                if (percent_completed > 0.95) { currentCameraState = CameraStates.cameraIdle; }
+                if (percent_completed > 0.98) { currentCameraState = CameraStates.cameraIdle; }
                 return (short)(percent_completed * 100);
             }
         }
