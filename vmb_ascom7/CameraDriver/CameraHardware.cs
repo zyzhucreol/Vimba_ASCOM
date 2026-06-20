@@ -50,7 +50,7 @@ namespace ASCOM.ZZVimbaX.Camera
         internal const string traceStateDefault = "true";
 
         private static string DriverProgId = ""; // ASCOM DeviceID (COM ProgID) for this driver, the value is set by the driver's class initialiser.
-        private static string DriverDescription = ""; // The value is set by the driver's class initialiser.
+        private static string DriverDescription = "AVT camera ASCOM driver using ZZVimbaX"; // The value is set by the driver's class initialiser.
         internal static string comPort; // COM port name (if required)
         private static bool connectedState; // Local server's connected state
         private static bool runOnce = false; // Flag to enable "one-off" activities only to run once.
@@ -63,7 +63,6 @@ namespace ASCOM.ZZVimbaX.Camera
         static private IVmbSystem vmb = null;
         static private ICamera cam = null;
         static private IOpenCamera openCam = null;
-        static private IFrame frame = null;
         static private IStream stream = null;
         static private IStreamCapture preparedStream = null;
         static private ushort[] image_data = new ushort[ccdHeight * ccdWidth];

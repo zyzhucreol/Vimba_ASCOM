@@ -32,7 +32,7 @@ class DeviceConfiguration:
 
 
 class OceanOpticsUSB2000zz:
-    _integration_time: int = 10
+    _integration_time: int = 20000
 
     _config: DeviceConfiguration
 
@@ -239,7 +239,7 @@ class OceanOpticsUSB2000zz:
 
 if __name__ == "__main__":
     dev = OceanOpticsUSB2000zz()
-
+    data_cum=np.zeros((2027,),dtype='float64')
     plt.ion()
     fig, ax = plt.subplots()
     line, = ax.plot([], [], 'b-')
@@ -248,7 +248,8 @@ if __name__ == "__main__":
     try:
         while True:
             x, data = dev.get_spectrum()
-            line.set_data(x, np.float64(data))
+            data_cum=data_cum+np.float64(data)
+            line.set_data(x, np.float64(data_cum))
             ax.relim()            # Recompute the data limits
             ax.autoscale_view()   # Autoscale the view to the new limits
             # plt.xlim([350,800])
