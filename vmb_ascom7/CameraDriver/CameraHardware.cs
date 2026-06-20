@@ -339,7 +339,6 @@ namespace ASCOM.ZZVimbaX.Camera
                             IntPtr imagePtr = frame.ImageData;
                             int pixelCount = cameraNumX * cameraNumY;
                             // Allocate a 1D buffer to receive the image data as 16-bit values
-                            //ushort[] image_data = new ushort[pixelCount];
                             Marshal.Copy(imagePtr, (short[])(object)image_data, 0, pixelCount);
                             cameraImageReady = true;
                             // Requeue the instance of IFrame internally
@@ -1339,19 +1338,8 @@ namespace ASCOM.ZZVimbaX.Camera
             // buffers from the previous PrepareCapture are still queued. Calling
             // PrepareCapture a second time without TearDown causes Vimba to fail
             // with "attempting to queue a frame but received an error".
-            try { openCam.Features.AcquisitionStop(); } catch { /* may already be stopped */ }
-            //if (preparedStream != null)
-            //{
-            //    try { preparedStream.TearDown(); } catch { /* already torn down */ }
-            //    preparedStream = null;
-            //}
-
-            //preparedStream = stream.PrepareCapture(AllocationModeValue.AnnounceFrame, 10);
+            //try { openCam.Features.AcquisitionStop(); } catch { /* may already be stopped */ }
             openCam.Features.AcquisitionStart();
-
-            // synchronous acquisition - deprecated in favour of asynchronous acquisition using the event handler on the stream, but left here as an example of how to do synchronous acquisition if required.
-            //frame = preparedStream.WaitForFrame(TimeSpan.FromSeconds(Math.Max(Duration*1.4,frame_timeout))); // Start the acquisition and wait for the first frame to be ready, to ensure that the camera is exposing before we return from this method
-            //cameraImageReady = true;
         }
 
         /// <summary>
