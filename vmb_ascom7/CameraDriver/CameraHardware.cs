@@ -1131,13 +1131,15 @@ namespace ASCOM.ZZVimbaX.Camera
         {
             get
             {
-                LogMessage("Offset Get", "Not implemented");
-                throw new PropertyNotImplementedException("Offset", false);
+                double blacklevel = openCam.Features.BlackLevel;
+                LogMessage("Offset Get", ((int)blacklevel).ToString());
+                return (int)blacklevel;
             }
             set
             {
-                LogMessage("Offset Set", "Not implemented");
-                throw new PropertyNotImplementedException("Offset", true);
+                LogMessage("Offset Set", value.ToString());
+                if (value < OffsetMin || value > OffsetMax) throw new InvalidValueException("Offset", value.ToString(), $"{OffsetMin} to {OffsetMax}");
+                openCam.Features.BlackLevel = (double)value;
             }
         }
 
@@ -1149,8 +1151,7 @@ namespace ASCOM.ZZVimbaX.Camera
         {
             get
             {
-                LogMessage("OffsetMax Get", "Not implemented");
-                throw new PropertyNotImplementedException("OffsetMax", false);
+                return 127;
             }
         }
 
@@ -1162,8 +1163,7 @@ namespace ASCOM.ZZVimbaX.Camera
         {
             get
             {
-                LogMessage("OffsetMin Get", "Not implemented");
-                throw new PropertyNotImplementedException("OffsetMin", true);
+                return 0;
             }
         }
 
