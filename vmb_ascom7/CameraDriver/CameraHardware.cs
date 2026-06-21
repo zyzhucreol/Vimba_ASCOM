@@ -1414,8 +1414,13 @@ namespace ASCOM.ZZVimbaX.Camera
         {
             get
             {
-                // TODO check that the driver hardware connection exists and is connected to the hardware
-                return connectedState;
+                // A valid hardware connection requires all Vimba X objects assigned in SetConnected
+                // (cam, openCam, stream and preparedStream) to be non-null. SetConnected sets each of
+                // these back to null when the last driver instance disconnects from the hardware.
+                return cam != null
+                    && openCam != null
+                    && stream != null
+                    && preparedStream != null;
             }
         }
 
