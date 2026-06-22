@@ -293,6 +293,7 @@ namespace ASCOM.ZZVimbaX.Camera
                 if (openCam != null) { openCam.Dispose(); openCam = null; }
                 if (cam != null) { cam = null; }
                 if (vmb != null) { vmb.Dispose(); vmb = null; }
+                connectedState = false;
             }
             catch { }
         }
@@ -496,7 +497,8 @@ namespace ASCOM.ZZVimbaX.Camera
         /// </summary>
         static internal void AbortExposure()
         {
-            openCam.Features.AcquisitionStop();
+            try { openCam.Features.AcquisitionStop(); } catch { /* may already be stopped */ }
+            cameraImageReady = false;
             LogMessage("AbortExposure", "Exposure aborted");
         }
 
@@ -1385,6 +1387,7 @@ namespace ASCOM.ZZVimbaX.Camera
         static internal void StopExposure()
         {
             try { openCam.Features.AcquisitionStop(); } catch { /* may already be stopped */ }
+            cameraImageReady = false;
             LogMessage("StopExposure", "Exposure stopped");
         }
 
