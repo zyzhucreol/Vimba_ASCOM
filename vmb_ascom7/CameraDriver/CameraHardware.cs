@@ -346,11 +346,13 @@ namespace ASCOM.ZZVimbaX.Camera
                         };
                         preparedStream = stream.PrepareCapture(AllocationModeValue.AnnounceFrame, 10);
                         LogMessage("SetConnected", "Vimba X camera opened.");
+                        connectedState = true;
                     }
                     else // Other device instances are connected so the hardware is already connected
                     {
                         // Since the hardware is already connected no action is required
                         LogMessage("SetConnected", $"Hardware already connected.");
+                        connectedState = true;
                     }
 
                     // The hardware either "already was" or "is now" connected, so add the driver unique ID to the connected list
@@ -365,6 +367,7 @@ namespace ASCOM.ZZVimbaX.Camera
                 {
                     // Ignore the request, the unique ID is not in the list
                     LogMessage("SetConnected", $"Ignoring request to disconnect because the device is already disconnected.");
+                    connectedState = false;
                 }
                 else // Instance currently connected so disconnect it
                 {
@@ -380,11 +383,13 @@ namespace ASCOM.ZZVimbaX.Camera
                         if (openCam != null) { openCam.Dispose(); openCam = null; }
                         if (cam != null) { cam = null; }
                         LogMessage("SetConnected", "Vimba X camera closed and API shut down.");
+                        connectedState = false;
                     }
                     else // Other device instances are connected so do not disconnect the hardware
                     {
                         // No action is required
                         LogMessage("SetConnected", $"Hardware already connected.");
+                        connectedState = true;
                     }
                 }
             }
@@ -481,7 +486,6 @@ namespace ASCOM.ZZVimbaX.Camera
         static private int cameraStartY = 0;
         static private DateTime exposureStart = DateTime.MinValue;
         static private double cameraLastExposureDuration = 0.0;
-        static private double frame_timeout = 3.0;
         static private bool cameraImageReady = false;
         static private CameraStates currentCameraState = CameraStates.cameraIdle;
         static private int[,] cameraImageArray;
@@ -985,7 +989,6 @@ namespace ASCOM.ZZVimbaX.Camera
                     return false;
                     //throw new ASCOM.InvalidOperationException("Call to ImageReady before the first image has been taken!");
                 }
-                currentCameraState = cameraImageReady ? CameraStates.cameraIdle : CameraStates.cameraExposing;
                 LogMessage("ImageReady Get", cameraImageReady.ToString());
                 return cameraImageReady;
                 
@@ -1330,7 +1333,6 @@ namespace ASCOM.ZZVimbaX.Camera
             cameraLastExposureDuration = Duration;
             openCam.Features.ExposureTimeAbs = Duration * 1_000_000; // Set exposure time in microseconds
             exposureStart = DateTime.Now;
-            currentCameraState = CameraStates.cameraExposing;
             LogMessage("StartExposure", Duration.ToString() + " " + Light.ToString());
 
             // Clean up the previous capture context before starting a new one.
@@ -1340,6 +1342,7 @@ namespace ASCOM.ZZVimbaX.Camera
             // with "attempting to queue a frame but received an error".
             //try { openCam.Features.AcquisitionStop(); } catch { /* may already be stopped */ }
             openCam.Features.AcquisitionStart();
+            currentCameraState = CameraStates.cameraExposing;
         }
 
         /// <summary>
@@ -1417,10 +1420,8 @@ namespace ASCOM.ZZVimbaX.Camera
                 // A valid hardware connection requires all Vimba X objects assigned in SetConnected
                 // (cam, openCam, stream and preparedStream) to be non-null. SetConnected sets each of
                 // these back to null when the last driver instance disconnects from the hardware.
-                return cam != null
-                    && openCam != null
-                    && stream != null
-                    && preparedStream != null;
+                connectedState = cam != null && openCam != null;
+                return connectedState;
             }
         }
 
