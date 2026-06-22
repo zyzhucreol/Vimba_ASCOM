@@ -1195,7 +1195,7 @@ namespace ASCOM.ZZVimbaX.Camera
                 double percent_completed = (exposureNow - exposureStart).TotalSeconds / cameraLastExposureDuration;
                 LogMessage("PercentCompleted Get", percent_completed.ToString());
                 if (percent_completed > 0.98) { currentCameraState = CameraStates.cameraIdle; }
-                return (short)(percent_completed * 100);
+                return (short)Math.Min(percent_completed * 100, 100);
             }
         }
 
