@@ -339,31 +339,29 @@ namespace ASCOM.ZZVimbaX.Camera
                             stream = openCam.Stream;
                             stream.FrameReceived += (s, e) =>
                             {
-                                try
-                                {
-                                    // Frame has arrived; we are now reading it out of the camera into managed memory.
-                                    currentCameraState = CameraStates.cameraDownload;
-                                    IFrame frame = e.Frame;
+                                // Frame has arrived; we are now reading it out of the camera into managed memory.
+                                currentCameraState = CameraStates.cameraDownload;
+                                IFrame frame = e.Frame;
 
-                                    // Copy the 16-bit pixel values from the unmanaged frame buffer.
-                                    IntPtr imagePtr = frame.ImageData;
-                                    int pixelCount = cameraNumX * cameraNumY;
+                                // Copy the 16-bit pixel values from the unmanaged frame buffer.
+                                IntPtr imagePtr = frame.ImageData;
+                                int pixelCount = cameraNumX * cameraNumY;
+                                if (imagePtr == IntPtr.Zero)
+                                {
+                                    currentCameraState = CameraStates.cameraError;
+                                    cameraImageReady = false;
+                                }
+                                else
+                                {
                                     Marshal.Copy(imagePtr, image_data, 0, pixelCount);
                                     cameraImageReady = true;
                                     currentCameraState = CameraStates.cameraIdle;
-                                    // Requeue the instance of IFrame internally
-                                    frame.Release();
                                 }
-                                catch (Exception ex)
-                                {
-                                    //cameraImageReady = true;
-                                    currentCameraState = CameraStates.cameraError;
-                                    try { LogMessage("FrameReceived", $"Exception while processing frame: {ex.Message}"); } catch { }
-                                }
+                                // Requeue the instance of IFrame internally
+                                frame.Release();
                             };
                             preparedStream = stream.PrepareCapture(AllocationModeValue.AnnounceFrame, 10);
                             LogMessage("SetConnected", "Vimba X camera opened.");
-                            connectedState = true;
                         }
                         catch (Exception ex)
                         {
@@ -373,7 +371,6 @@ namespace ASCOM.ZZVimbaX.Camera
                             try { if (stream != null) { stream.RemoveAllFrameEventHandlers(); stream.Close(); stream = null; } } catch { }
                             try { if (openCam != null) { openCam.Dispose(); openCam = null; } } catch { }
                             cam = null;
-                            connectedState = false;
                             throw;
                         }
                     }
@@ -381,7 +378,6 @@ namespace ASCOM.ZZVimbaX.Camera
                     {
                         // Since the hardware is already connected no action is required
                         LogMessage("SetConnected", $"Hardware already connected.");
-                        connectedState = true;
                     }
 
                     // The hardware either "already was" or "is now" connected, so add the driver unique ID to the connected list
@@ -396,7 +392,6 @@ namespace ASCOM.ZZVimbaX.Camera
                 {
                     // Ignore the request, the unique ID is not in the list
                     LogMessage("SetConnected", $"Ignoring request to disconnect because the device is already disconnected.");
-                    connectedState = false;
                 }
                 else // Instance currently connected so disconnect it
                 {
@@ -412,13 +407,11 @@ namespace ASCOM.ZZVimbaX.Camera
                         if (openCam != null) { openCam.Dispose(); openCam = null; }
                         if (cam != null) { cam = null; }
                         LogMessage("SetConnected", "Vimba X camera closed and API shut down.");
-                        connectedState = false;
                     }
                     else // Other device instances are connected so do not disconnect the hardware
                     {
                         // No action is required
                         LogMessage("SetConnected", $"Hardware already connected.");
-                        connectedState = true;
                     }
                 }
             }
