@@ -348,8 +348,8 @@ namespace ASCOM.ZZVimbaX.Camera
                                 int pixelCount = cameraNumX * cameraNumY;
                                 if (imagePtr == IntPtr.Zero)
                                 {
-                                    currentCameraState = CameraStates.cameraError;
-                                    cameraImageReady = false;
+                                    currentCameraState = CameraStates.cameraIdle;
+                                    cameraImageReady = true;
                                 }
                                 else
                                 {
