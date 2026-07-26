@@ -1,11 +1,19 @@
 from dataclasses import dataclass
+import socket
+import threading
 
 import libusb_package
 import numpy as np
+import matplotlib
+matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 import usb.core
 from numpy.typing import NDArray
-import time
+from scipy.io import savemat
+
+TRIGGER_HOST = "127.0.0.1"
+TRIGGER_PORT = 5555
+EXPOSURE_TIME = 5000  # in microseconds, for solar observation
 
 class DeviceNotFoundError(Exception):
     """Raised when no compatible device is connected."""
@@ -32,7 +40,7 @@ class DeviceConfiguration:
 
 
 class OceanOpticsUSB2000zz:
-    _integration_time: int = 20000
+    _integration_time: int = EXPOSURE_TIME
 
     _config: DeviceConfiguration
 
@@ -186,7 +194,7 @@ class OceanOpticsUSB2000zz:
         # scale data, described as 'autonulling' in the manual.
         intensity = data
         self.has_overflow = bool(intensity.max() == 4095)
-        return x[20:], intensity[20:]
+        return x[20:], intensity[20:].astype(np.float64)
 
     def get_raw_spectrum(self) -> NDArray[np.uint16]:
         """Record a raw spectrum, including dark pixels.
@@ -239,31 +247,70 @@ class OceanOpticsUSB2000zz:
 
 if __name__ == "__main__":
     dev = OceanOpticsUSB2000zz()
-    data_cum=np.zeros((2027,),dtype='float64')
+    data_cum = np.zeros((2027,), dtype='float64')
     plt.ion()
     fig, ax = plt.subplots()
-    line, = ax.plot([], [], 'b-')
     plt.xlabel('wavelength (nm)')
     plt.ylabel('intensity (a.u.)')
+
+    trigger_event = threading.Event()
+    stop_event = threading.Event()
+    x = np.empty(0)
+    data = np.empty(0)
+
+    def _trigger_server() -> None:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as srv:
+            srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            srv.bind((TRIGGER_HOST, TRIGGER_PORT))
+            srv.listen()
+            srv.settimeout(1.0)
+            print(f"Listening for triggers on {TRIGGER_HOST}:{TRIGGER_PORT}")
+            while not stop_event.is_set():
+                try:
+                    conn, _ = srv.accept()
+                    with conn:
+                        msg = conn.recv(1024)
+                        if msg.strip() == b"TRIGGER":
+                            trigger_event.set()
+                except socket.timeout:
+                    continue
+
+    server_thread = threading.Thread(target=_trigger_server, daemon=True)
+    server_thread.start()
+
+    # Acquire and display an initial spectrum before waiting for triggers
+    x, data = dev.get_spectrum()
+    data_cum += data
+    line, = ax.plot(x, data, 'b-')
+    ax.relim()
+    ax.autoscale_view()
+    fig.canvas.draw()
+    ind_image = 0 # index synced with SharpCap image index
+
     try:
         while True:
-            x, data = dev.get_spectrum()
-            data_cum=data_cum+np.float64(data)
-            line.set_data(x, np.float64(data_cum))
-            ax.relim()            # Recompute the data limits
-            ax.autoscale_view()   # Autoscale the view to the new limits
-            # plt.xlim([350,800])
-            fig.canvas.draw()
+            if trigger_event.is_set():
+                trigger_event.clear()
+                ind_image = ind_image + 1
+                x, data = dev.get_spectrum()
+                data_cum += data
+                line.set_data(x, data)
+                ax.relim()
+                ax.autoscale_view()
+                fig.canvas.draw()
+                savemat(f"./results/spectrum_{ind_image}.mat", {"wavelength": x, "spectrum": data, "spectrum_cum": data_cum})
             fig.canvas.flush_events()
-            time.sleep(0.1)  # Control update speed
+            plt.pause(0.05)
     except KeyboardInterrupt:
         print("Plotting stopped by user.")
     finally:
-        plt.ioff()  # Turn off interactive mode
-        plt.close('all');
-        plt.figure()
-        plt.plot(x,np.float64(data),'b-')
-        plt.show()
+        stop_event.set()
+        plt.ioff()
+        plt.close('all')
+        if x.size > 0:
+            plt.figure()
+            plt.plot(x, data, 'b-')
+            plt.show()
         print(f"{dev.has_overflow=}")
         print(dev.get_configuration())
         dev.set_shutdown_mode()
