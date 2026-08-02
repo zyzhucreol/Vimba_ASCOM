@@ -34,11 +34,11 @@ def generate_square_spiral_xy(spiral_radius):
 
 # Define wrapper for MoveAxi-based slewing
 def slewRA(duration: float = 1.0, rate: int = 1):
-	SharpCap.Mounts.SelectedMount.MoveAxis(0,1)
+	SharpCap.Mounts.SelectedMount.MoveAxis(0,rate+1)
 	time.sleep(duration)
-	SharpCap.Mounts.SelectedMount.MoveAxis(0,0)
+	SharpCap.Mounts.SelectedMount.MoveAxis(0,1)
 def slewDEC(duration: float = 1.0, rate: int = 1):
-	SharpCap.Mounts.SelectedMount.MoveAxis(1,1)
+	SharpCap.Mounts.SelectedMount.MoveAxis(1,rate)
 	time.sleep(duration)
 	SharpCap.Mounts.SelectedMount.MoveAxis(1,0)
 
@@ -50,6 +50,7 @@ TRIGGER_HOST = "127.0.0.1"
 TRIGGER_PORT = 5555
 RA_baseline = SharpCap.Mounts.SelectedMount.RA
 DEC_baseline = SharpCap.Mounts.SelectedMount.Dec
+SharpCap.Mounts.SelectedMount.Tracking = False
 x_coords, y_coords = generate_square_spiral_xy(spiral_radius)
 SharpCap.SelectedCamera.Controls.OutputFormat.Value = 'PNG files (*.png)'
 pwd = os.path.dirname(os.path.abspath(__file__))
@@ -67,3 +68,4 @@ for ind_image in range(len(x_coords)):
 			slewRA(rate = delta_x)
 		if delta_y is not 0:
 			slewDEC(rate = delta_y)
+SharpCap.Mounts.SelectedMount.Tracking = True
